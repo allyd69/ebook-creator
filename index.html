@@ -639,6 +639,10 @@
                 <div id="editorSection" class="page-editor">
                     <h3 class="section-title">Edit Pages</h3>
                     <div class="page-navigation" id="pageNavigation"></div>
+                    
+                    <div style="margin-bottom: 20px; color: var(--silver); font-size: 0.9rem;">
+                        <span id="pageStats">Word count: 0 words</span>
+                    </div>
 
                     <div class="input-group">
                         <label>Page Title</label>
@@ -759,19 +763,56 @@
         }
 
         function parseContent(content) {
-            // Split content into pages (you can adjust the logic)
+            // Split content into properly-sized pages (500-1000 words per page)
             const paragraphs = content.split('\n\n').filter(p => p.trim());
             
-            // Create pages - every 3 paragraphs becomes a page
             ebookData.pages = [];
-            for (let i = 0; i < paragraphs.length; i += 3) {
-                const pageContent = paragraphs.slice(i, i + 3).join('\n\n');
-                ebookData.pages.push({
-                    title: `Page ${ebookData.pages.length + 1}`,
-                    content: pageContent,
-                    imageUrl: null,
-                    transparency: 50
-                });
+            let currentPage = {
+                title: 'Page 1',
+                content: '',
+                wordCount: 0,
+                imageUrl: null,
+                transparency: 50
+            };
+            
+            const TARGET_WORDS_PER_PAGE = 750; // Ideal page length
+            const MAX_WORDS_PER_PAGE = 1000;
+            
+            for (let i = 0; i < paragraphs.length; i++) {
+                const para = paragraphs[i];
+                const paraWords = para.split(/\s+/).length;
+                
+                // If adding this paragraph would exceed max, start new page
+                if (currentPage.wordCount > 0 && currentPage.wordCount + paraWords > MAX_WORDS_PER_PAGE) {
+                    ebookData.pages.push({ ...currentPage });
+                    currentPage = {
+                        title: `Page ${ebookData.pages.length + 1}`,
+                        content: para,
+                        wordCount: paraWords,
+                        imageUrl: null,
+                        transparency: 50
+                    };
+                } else {
+                    currentPage.content += (currentPage.content ? '\n\n' : '') + para;
+                    currentPage.wordCount += paraWords;
+                    
+                    // If we've reached target and not last paragraph, start new page
+                    if (currentPage.wordCount >= TARGET_WORDS_PER_PAGE && i < paragraphs.length - 1) {
+                        ebookData.pages.push({ ...currentPage });
+                        currentPage = {
+                            title: `Page ${ebookData.pages.length + 1}`,
+                            content: '',
+                            wordCount: 0,
+                            imageUrl: null,
+                            transparency: 50
+                        };
+                    }
+                }
+            }
+            
+            // Add last page if it has content
+            if (currentPage.content) {
+                ebookData.pages.push(currentPage);
             }
 
             renderPageNavigation();
@@ -796,6 +837,10 @@
             document.getElementById('transparencySlider').value = page.transparency || 50;
             document.getElementById('transparencyValue').textContent = page.transparency || 50;
             
+            // Update word count
+            const wordCount = page.content.split(/\s+/).filter(w => w.trim()).length;
+            document.getElementById('pageStats').textContent = `Word count: ${wordCount} words | Page ${index + 1} of ${ebookData.pages.length}`;
+            
             renderPageNavigation();
             updatePreview();
         }
@@ -804,6 +849,11 @@
             const page = ebookData.pages[ebookData.currentPage];
             page.title = document.getElementById('pageTitle').value;
             page.content = document.getElementById('pageContent').value;
+            
+            // Update word count
+            const wordCount = page.content.split(/\s+/).filter(w => w.trim()).length;
+            document.getElementById('pageStats').textContent = `Word count: ${wordCount} words | Page ${ebookData.currentPage + 1} of ${ebookData.pages.length}`;
+            
             renderPageNavigation();
             updatePreview();
         }
@@ -946,6 +996,137 @@
         }
 
         function exportEbook() {
+            // Show export options
+            const format = confirm('Export as HTML ebook?\n\nOK = HTML (web-ready ebook)\nCancel = JSON (data backup)');
+            
+            if (format) {
+                exportAsHTML();
+            } else {
+                exportAsJSON();
+            }
+        }
+        
+        function exportAsHTML() {
+            const template = ebookData.selectedTemplate;
+            
+            // Generate complete HTML ebook
+            let html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ebook Export</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Cormorant+Garamond:wght@300;400;600&family=Crimson+Pro:wght@200;300;400;600&family=Manrope:wght@300;400;500;600;700&family=DM+Serif+Display:ital@0;1&family=Libre+Baskerville:wght@400;700&family=Lora:wght@400;600;700&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Manrope', sans-serif;
+            background: #faf8f3;
+            color: #2d2d2d;
+            line-height: 1.8;
+        }
+        .page {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 40px;
+            min-height: 100vh;
+            position: relative;
+            page-break-after: always;
+        }
+        .page img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 0;
+        }
+        .page-content {
+            position: relative;
+            z-index: 1;
+        }
+        h2 {
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+        }
+        p {
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        
+        /* Template Styles */
+        .template-minimal-elegance { font-family: 'Cormorant Garamond', serif; line-height: 1.8; letter-spacing: 0.5px; }
+        .template-minimal-elegance h2 { font-family: 'Cinzel', serif; font-weight: 600; font-size: 2.5rem; margin-bottom: 30px; letter-spacing: 2px; }
+        
+        .template-editorial-bold { font-family: 'Libre Baskerville', serif; line-height: 1.7; }
+        .template-editorial-bold h2 { font-family: 'Playfair Display', serif; font-weight: 900; font-size: 3rem; margin-bottom: 25px; text-transform: uppercase; }
+        
+        .template-classic-heritage { font-family: 'Crimson Pro', serif; line-height: 1.9; text-align: center; }
+        .template-classic-heritage h2 { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 2.8rem; margin-bottom: 35px; }
+        
+        .template-modern-luxe { font-family: 'Manrope', sans-serif; line-height: 1.75; font-weight: 300; }
+        .template-modern-luxe h2 { font-family: 'Cinzel', serif; font-weight: 400; font-size: 2.2rem; margin-bottom: 30px; letter-spacing: 3px; }
+        
+        .template-ultra-luxury { font-family: 'Cormorant Garamond', serif; line-height: 2; font-weight: 300; }
+        .template-ultra-luxury h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 3.5rem; margin-bottom: 50px; letter-spacing: 5px; }
+        
+        .template-timeless-elegant { font-family: 'Lora', serif; line-height: 1.8; text-align: center; }
+        .template-timeless-elegant h2 { font-family: 'Cinzel', serif; font-weight: 700; font-size: 2.6rem; margin-bottom: 40px; }
+        
+        .template-scholarly-pro { font-family: 'Crimson Pro', serif; line-height: 1.7; }
+        .template-scholarly-pro h2 { font-family: 'Libre Baskerville', serif; font-weight: 700; font-size: 2.4rem; margin-bottom: 30px; }
+        
+        .template-creative-vision { font-family: 'Cormorant Garamond', serif; line-height: 1.85; font-style: italic; }
+        .template-creative-vision h2 { font-family: 'DM Serif Display', serif; font-weight: 400; font-size: 2.8rem; margin-bottom: 35px; font-style: italic; }
+        
+        .template-refined-quality { font-family: 'Manrope', sans-serif; line-height: 1.75; font-weight: 400; }
+        .template-refined-quality h2 { font-family: 'Playfair Display', serif; font-weight: 600; font-size: 2.5rem; margin-bottom: 30px; }
+        
+        .template-premium-edition { font-family: 'Lora', serif; line-height: 2.1; font-weight: 400; }
+        .template-premium-edition h2 { font-family: 'Cinzel', serif; font-weight: 700; font-size: 3.2rem; margin-bottom: 45px; letter-spacing: 4px; text-transform: uppercase; }
+        
+        @media print {
+            .page { page-break-after: always; }
+        }
+    </style>
+</head>
+<body class="template-${template}">
+`;
+            
+            // Add each page
+            ebookData.pages.forEach((page, index) => {
+                const imageHtml = page.imageUrl ? 
+                    `<img src="${page.imageUrl}" style="opacity: ${(100 - (page.transparency || 50)) / 100};" alt="Page background">` : '';
+                
+                html += `
+    <div class="page">
+        ${imageHtml}
+        <div class="page-content">
+            <h2>${page.title || 'Untitled'}</h2>
+            <p>${page.content || ''}</p>
+        </div>
+    </div>
+`;
+            });
+            
+            html += `
+</body>
+</html>`;
+            
+            // Download HTML file
+            const blob = new Blob([html], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'my-ebook.html';
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert('Ebook exported as HTML! You can open it in any browser or convert to PDF.');
+        }
+        
+        function exportAsJSON() {
             const exportData = {
                 ...ebookData,
                 exportDate: new Date().toISOString(),
@@ -961,7 +1142,7 @@
             a.click();
             URL.revokeObjectURL(url);
 
-            alert('Ebook exported successfully!');
+            alert('Ebook data exported as JSON!');
         }
 
         // Drag and drop support
