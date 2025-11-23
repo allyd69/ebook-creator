@@ -631,9 +631,9 @@
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         <p style="font-size: 1.1rem; margin-bottom: 5px;">Drop your ebook draft here</p>
-                        <p style="font-size: 0.9rem; color: var(--silver);">Supports TXT, PDF, DOCX</p>
+                        <p style="font-size: 0.9rem; color: var(--silver);">Accepts all file formats (TXT, PDF, DOCX, HTML, MD, and more)</p>
                     </div>
-                    <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="display: none;" onchange="handleFileUpload(event)">
+                    <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload(event)">
                 </div>
 
                 <div id="editorSection" class="page-editor">
@@ -714,12 +714,20 @@
             try {
                 let content = '';
                 
-                if (fileType === 'txt') {
+                if (fileType === 'txt' || fileType === 'md' || fileType === 'html' || fileType === 'htm') {
                     content = await file.text();
                 } else if (fileType === 'pdf') {
                     content = await extractPDFText(file);
-                } else if (fileType === 'docx') {
+                } else if (fileType === 'docx' || fileType === 'doc') {
                     content = await extractDOCXText(file);
+                } else {
+                    // Try to read as text for any other format
+                    try {
+                        content = await file.text();
+                    } catch (e) {
+                        alert('This file format may not be supported. Please try TXT, PDF, DOCX, HTML, or MD files.');
+                        return;
+                    }
                 }
 
                 parseContent(content);
