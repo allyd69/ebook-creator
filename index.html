@@ -762,7 +762,36 @@
             return result.value;
         }
 
+        function cleanMarkdown(text) {
+            // Remove markdown formatting symbols
+            text = text.replace(/#{1,6}\s/g, ''); // Remove # headers
+            text = text.replace(/\*\*\*/g, ''); // Remove ***
+            text = text.replace(/\*\*/g, ''); // Remove **
+            text = text.replace(/\*/g, ''); // Remove *
+            text = text.replace(/_{3,}/g, ''); // Remove ___
+            text = text.replace(/__/g, ''); // Remove __
+            text = text.replace(/_/g, ''); // Remove _
+            text = text.replace(/~~~/g, ''); // Remove ~~~
+            text = text.replace(/~~/g, ''); // Remove ~~
+            text = text.replace(/---/g, ''); // Remove ---
+            text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1'); // Remove links but keep text
+            text = text.replace(/`{3}[\s\S]*?`{3}/g, ''); // Remove code blocks
+            text = text.replace(/`/g, ''); // Remove inline code
+            text = text.replace(/^\s*[-*+]\s/gm, ''); // Remove bullet points
+            text = text.replace(/^\s*\d+\.\s/gm, ''); // Remove numbered lists
+            text = text.replace(/>\s/g, ''); // Remove blockquotes
+            
+            // Clean up extra whitespace
+            text = text.replace(/\n{3,}/g, '\n\n'); // Max 2 consecutive newlines
+            text = text.trim();
+            
+            return text;
+        }
+
         function parseContent(content) {
+            // Clean markdown symbols from content
+            content = cleanMarkdown(content);
+            
             // Split content into properly-sized pages (500-1000 words per page)
             const paragraphs = content.split('\n\n').filter(p => p.trim());
             
