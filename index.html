@@ -1,433 +1,168 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Premium Ebook Creator with Image Upload</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:wght@400&display=swap" rel="stylesheet" />
-<style>
-    /* Reset & Base */
-    *, *::before, *::after {
-        margin: 0; padding: 0; box-sizing: border-box;
-    }
-    body {
-        font-family: 'Lora', serif;
-        background: #1a1a2e;
-        color: #eee;
-        min-height: 100vh;
-        padding: 40px 20px;
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        line-height: 1.7;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-    }
-    .container {
-        background: rgba(255 255 255 / 0.07);
-        border-radius: 20px;
-        width: 100%;
-        max-width: 980px;
-        padding: 40px 50px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.85);
-        display: grid;
-        grid-template-columns: 180px 1fr 1fr;
-        grid-template-rows: auto auto 1fr auto;
-        grid-template-areas:
-            "header header header"
-            "nav title upload"
-            "nav content preview"
-            "nav controls preview"
-            "nav export preview";
-        column-gap: 30px;
-        row-gap: 25px;
-        user-select: text;
-    }
-    h1 {
-        grid-area: header;
-        font-family: 'Playfair Display', serif;
-        color: #d4af37;
-        font-size: 3.4rem;
-        font-weight: 700;
-        text-align: center;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        text-shadow: 0 0 10px #d4af37aa;
-        margin-bottom: 20px;
-    }
-
-    /* Section Subtitles */
-    .subtitle {
-        font-family: 'Playfair Display', serif;
-        font-weight: 700;
-        font-size: 1.25rem;
-        color: #d4af37;
-        margin-bottom: 10px;
-        text-shadow: 0 0 5px #b8922acc;
-        user-select: none;
-    }
-
-    /* Navigation */
-    .page-nav {
-        grid-area: nav;
-        display: flex;
-        flex-direction: column;
-        background: rgba(212,175,55,0.15);
-        border-radius: 12px;
-        padding: 18px 15px 15px 15px;
-        overflow-y: auto;
-        max-height: 730px;
-        box-shadow: inset 0 0 12px rgb(212 175 55 / 0.5);
-    }
-    .page-btn {
-        background: transparent;
-        border: none;
-        font-family: 'Lora', serif;
-        font-size: 1rem;
-        font-weight: 600;
-        color: #d4af37;
-        padding: 12px 18px;
-        margin-bottom: 11px;
-        border-left: 4px solid transparent;
-        cursor: pointer;
-        text-align: left;
-        transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-        border-radius: 8px;
-        user-select: none;
-    }
-    .page-btn:hover {
-        background: rgba(212, 175, 55, 0.33);
-    }
-    .page-btn.active {
-        background: #d4af37;
-        color: #1a1a2e;
-        border-left: 4px solid #f4a460;
-    }
-
-    /* Title input */
-    #title {
-        grid-area: title;
-        font-family: 'Playfair Display', serif;
-        font-size: 1.8rem;
-        font-weight: 700;
-        background: rgba(255 255 255 / 0.08);
-        border: 2px solid #d4af37;
-        border-radius: 12px;
-        padding: 15px 20px;
-        color: #fff;
-        box-shadow: inset 0 0 9px #d4af37;
-        outline-offset: 2px;
-        transition: border-color 0.3s ease;
-        margin-bottom: 25px;
-    }
-    #title:focus {
-        border-color: #f4a460;
-        background: rgba(255 255 255 / 0.15);
-        color: #1a1a2e;
-    }
-
-    /* Content textarea */
-    #content {
-        grid-area: content;
-        background: rgba(255 255 255 / 0.05);
-        border: 2px solid #d4af37;
-        border-radius: 12px;
-        padding: 20px;
-        color: #fff;
-        font-family: 'Lora', serif;
-        font-size: 1rem;
-        line-height: 1.9;
-        height: 490px;
-        resize: vertical;
-        box-shadow: inset 0 0 12px #d4af37;
-        transition: border-color 0.3s ease;
-        outline-offset: 2px;
-        margin-bottom: 10px;
-    }
-    #content:focus {
-        border-color: #f4a460;
-        background: rgba(255 255 255 / 0.15);
-        color: #1a1a2e;
-    }
-
-    /* Upload Image Section */
-    #upload-section {
-        grid-area: upload;
-        display: flex;
-        flex-direction: column;
-        background: rgba(212,175,55,0.12);
-        border-radius: 16px;
-        padding: 25px 20px;
-        box-shadow: inset 0 0 6px #d4af37aa;
-    }
-    #upload-section label {
-        font-family: 'Playfair Display', serif;
-        color: #d4af37;
-        font-weight: 700;
-        margin-bottom: 12px;
-        user-select: none;
-    }
-    #upload-image {
-        cursor: pointer;
-        padding: 15px;
-        border-radius: 10px;
-        border: 2px dashed #d4af37;
-        background: transparent;
-        color: #d4af37;
-        font-weight: 600;
-        font-size: 1rem;
-        text-align: center;
-        transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        user-select: none;
-    }
-    #upload-image:hover, #upload-image:focus {
-        background: #d4af37;
-        color: #1a1a2e;
-        border-color: #f4a460;
-    }
-    #image-file {
-        display: none;
-    }
-
-    /* Transparency Control */
-    #controls {
-        grid-area: controls;
-        background: rgba(212,175,55,0.12);
-        border-radius: 16px;
-        padding: 20px 25px;
-        box-shadow: inset 0 0 6px #d4af37aa;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        justify-content: center;
-    }
-    #controls label {
-        font-family: 'Playfair Display', serif;
-        color: #d4af37;
-        font-weight: 700;
-        user-select: none;
-    }
-    #transparency-slider {
-        -webkit-appearance: none;
-        width: 100%;
-        height: 8px;
-        border-radius: 6px;
-        background: #d4af37;
-        outline: none;
-        cursor: pointer;
-        transition: background 0.3s ease;
-    }
-    #transparency-slider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: #1a1a2e;
-        border: 3px solid #d4af37;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-    #transparency-slider::-moz-range-thumb {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: #1a1a2e;
-        border: 3px solid #d4af37;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-    }
-
-    /* Preview */
-    .preview {
-        grid-area: preview;
-        background: #faf8f3;
-        color: #2d2d2d;
-        border-radius: 15px;
-        padding: 50px 45px;
-        overflow-y: auto;
-        box-shadow: 0 0 40px rgb(45 45 45 / 0.15);
-        font-family: 'Lora', serif;
-        line-height: 1.9;
-        max-height: 730px;
-        position: relative;
-        border: 1px solid #e8dec0;
-        user-select: text;
-    }
-    .preview h2 {
-        font-family: 'Playfair Display', serif;
-        font-size: 2.8rem;
-        margin-bottom: 40px;
-        color: #b68f1e;
-        text-shadow: 0 0 12px #d4af37bb;
-    }
-    .preview p {
-        margin-bottom: 25px;
-        font-size: 1.05rem;
-    }
-    .preview img.chapter-image {
-        position: absolute;
-        max-width: 60%;
-        max-height: 90%;
-        right: 10%;
-        top: 50%;
-        transform: translateY(-50%);
-        pointer-events: none;
-        border-radius: 15px;
-        box-shadow: 0 10px 35px rgba(212,175,55,0.6);
-        object-fit: contain;
-        opacity: 0.35;
-        transition: opacity 0.3s ease;
-        user-select: none;
-    }
-    .preview-content {
-        max-width: 60%;
-    }
-
-    /* Export Button */
-    .btn {
-        grid-area: export;
-        background: #d4af37;
-        color: #1a1a2e;
-        border: none;
-        padding: 16px 45px;
-        cursor: pointer;
-        font-weight: 700;
-        border-radius: 10px;
-        font-size: 1.18rem;
-        justify-self: start;
-        box-shadow: 0 8px 24px rgba(212,175,55,0.7);
-        transition: background-color 0.3s ease, box-shadow 0.3s ease;
-        user-select: none;
-        margin-top: 10px;
-    }
-    .btn:hover, .btn:focus {
-        background: #f4a460;
-        box-shadow: 0 12px 30px rgba(244,164,96,0.9);
-        outline: none;
-    }
-
-    /* Responsive */
-    @media (max-width: 1050px) {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Ebook Creator – Elite Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Lora', serif;
+            background: linear-gradient(135deg, #0f0f17, #1d1d2f);
+            color: #fff;
+            padding: 40px 20px;
+        }
         .container {
-            grid-template-columns: 160px 1fr;
-            grid-template-rows: auto auto 1fr auto auto auto;
-            grid-template-areas:
-                "header header"
-                "nav title"
-                "nav upload"
-                "nav content"
-                "nav controls"
-                "nav preview"
-                "nav export";
-            row-gap: 18px;
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 50px;
+            border-radius: 20px;
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(212,175,55,0.2);
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+        h1 {
+            font-family: 'Playfair Display', serif;
+            color: #d4af37;
+            text-align: center;
+            font-size: 3rem;
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+        }
+        .upload-zone {
+            border: 2px dashed #d4af37;
+            padding: 80px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 40px;
+            transition: 0.3s;
+            border-radius: 15px;
+        }
+        .upload-zone:hover {
+            background: rgba(212,175,55,0.12);
+        }
+        .btn {
+            background: #d4af37;
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 35px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 8px;
+            margin: 10px 5px;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            background: #f5c96a;
+        }
+        .page-nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        .page-btn {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid #d4af37;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .page-btn.active {
+            background: #d4af37;
+            color: #000;
+        }
+        input, textarea {
+            width: 100%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid #d4af37;
+            color: #fff;
+            padding: 12px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+        textarea {
+            min-height: 300px;
+            font-family: 'Lora', serif;
+            line-height: 1.8;
         }
         .preview {
-            max-height: 450px;
-            padding: 35px 20px;
+            background: #ffffff;
+            color: #2d2d2d;
+            padding: 60px;
+            margin-top: 40px;
+            min-height: 600px;
+            border-radius: 15px;
+            font-family: 'Lora', serif;
+            line-height: 1.9;
             position: relative;
+            overflow: hidden;
         }
-        .preview img.chapter-image {
-            max-width: 120px;
-            max-height: 120px;
-            right: 15px;
-            top: 10px;
-            transform: none;
+        .preview h2 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.8rem;
+            margin-bottom: 40px;
         }
-        #title {
-            margin-bottom: 12px;
-            font-size: 1.5rem;
-            padding: 12px 16px;
+        .preview img.bg-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.25;
+            z-index: 1;
         }
-        #content {
-            height: 280px;
-            margin-bottom: 15px;
+        .preview .text-layer {
+            position: relative;
+            z-index: 2;
         }
-        #upload-section {
-            padding: 20px 15px;
+        .img-controls {
+            margin: 20px 0;
         }
-    }
-</style>
+    </style>
 </head>
 <body>
-<main class="container" role="main" aria-label="Premium Ebook Creator with Image Upload">
-    <h1>Premium Ebook Creator</h1>
+    <div class="container">
+        <h1>Premium Ebook Creator</h1><div id="upload">
+        <div class="upload-zone" onclick="document.getElementById('file').click()">
+            <h2>Upload Your Draft</h2>
+            <p>Supports: DOCX, PDF, TXT</p>
+        </div>
+        <input type="file" id="file" style="display:none" onchange="handleFile(event)">
+    </div>
 
-    <nav class="page-nav" id="nav" aria-label="Chapters Navigation">
-        <div class="subtitle">Chapters</div>
-    </nav>
+    <div id="editor" class="editor" style="display:none;">
+        <div class="page-nav" id="nav"></div>
 
-    <section id="title-section" aria-labelledby="title-label">
-        <div class="subtitle" id="title-label">Chapter Title</div>
-        <input type="text" id="title" placeholder="Enter chapter title" aria-required="true" aria-describedby="title-desc" />
-    </section>
+        <input type="text" id="title" placeholder="Enter Chapter Title">
+        <textarea id="content" placeholder="Write or edit chapter content..."></textarea>
 
-    <section id="upload-section" aria-labelledby="upload-label">
-        <div class="subtitle" id="upload-label">Upload Image for this Chapter</div>
-        <button id="upload-image" aria-label="Upload Image">Choose Image</button>
-        <input type="file" id="image-file" accept="image/*" aria-hidden="true" />
-        <small style="color:#d4af37; margin-top: 6px; font-size:0.85rem;">Supported formats: JPG, PNG, GIF</small>
-    </section>
+        <div class="img-controls">
+            <label>Add Background Image:</label>
+            <input type="file" id="bgImage" accept="image/*" onchange="uploadBgImage(event)">
 
-    <section id="content-section" aria-labelledby="content-label">
-        <div class="subtitle" id="content-label">Chapter Content</div>
-        <textarea id="content" placeholder="Enter chapter content" aria-required="true"></textarea>
-    </section>
+            <label>Transparency:</label>
+            <input type="range" id="opacityControl" min="0" max="100" value="25" onchange="changeOpacity(this.value)">
+        </div>
 
-    <section id="controls" aria-label="Image Transparency Controls">
-        <label for="transparency-slider" class="subtitle">Image Transparency</label>
-        <input type="range" id="transparency-slider" min="0" max="1" step="0.01" value="0.35" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.35" aria-label="Adjust image transparency" />
-    </section>
+        <button class="btn" onclick="exportHTML()">Export Ebook</button>
 
-    <article class="preview" id="preview" tabindex="0" aria-live="polite" aria-label="Chapter preview">
-        <!-- Chapter text and image overlap shown here -->
-        <div class="preview-content"></div>
-        <img src="" alt="Chapter image" class="chapter-image" style="opacity:0; display:none;" />
-    </article>
-
-    <button class="btn" id="export-btn" aria-label="Export the ebook as HTML file">Export Ebook</button>
-</main>
+        <div class="preview" id="preview">
+            <img id="bgPreview" class="bg-img" style="display:none;">
+            <div class="text-layer" id="previewText"></div>
+        </div>
+    </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
     let chapters = [];
     let currentIdx = 0;
-
-    const titleInput = document.getElementById('title');
-    const contentInput = document.getElementById('content');
-    const preview = document.getElementById('preview');
-    const previewContent = preview.querySelector('.preview-content');
-    const chapterImage = preview.querySelector('.chapter-image');
-    const nav = document.getElementById('nav');
-    const uploadImageBtn = document.getElementById('upload-image');
-    const imageFileInput = document.getElementById('image-file');
-    const transparencySlider = document.getElementById('transparency-slider');
-    const exportBtn = document.getElementById('export-btn');
-
-    uploadImageBtn.addEventListener('click', () => imageFileInput.click());
-
-    imageFileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            alert('Please upload a valid image file.');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            chapters[currentIdx].imageSrc = event.target.result;
-            updatePreview();
-        };
-        reader.readAsDataURL(file);
-    });
-
-    transparencySlider.addEventListener('input', (e) => {
-        chapters[currentIdx].imageOpacity = parseFloat(e.target.value);
-        updatePreview();
-    });
 
     async function handleFile(e) {
         const file = e.target.files[0];
@@ -436,21 +171,18 @@
         let text = '';
         const ext = file.name.split('.').pop().toLowerCase();
 
-        if (ext === 'txt') {
-            text = await file.text();
-        } else if (ext === 'docx') {
+        if (ext === 'txt') text = await file.text();
+        else if (ext === 'docx') {
             const buf = await file.arrayBuffer();
-            const result = await mammoth.extractRawText({ arrayBuffer: buf });
+            const result = await mammoth.extractRawText({arrayBuffer: buf});
             text = result.value;
         } else if (ext === 'pdf') {
             const buf = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+            const pdf = await pdfjsLib.getDocument({data: buf}).promise;
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const content = await page.getTextContent();
-                text += content.items.map(x => x.str).join(' ') + '
-
-';
+                text += content.items.map(x => x.str).join(' ') + '\n\n';
             }
         }
 
@@ -458,153 +190,106 @@
     }
 
     function processText(text) {
-        // Fix common encoding issues
         text = text.replace(/â€™/g, "'")
-            .replace(/â€œ/g, '"')
-            .replace(/â€/g, '"')
-            .replace(/â€"/g, '—')
-            .replace(/â€"/g, '–')
-            .replace(/Â/g, '')
-            .replace(/â€~/g, "'")
-            .replace(/Ã©/g, 'é')
-            .replace(/Ã¡/g, 'á');
+                   .replace(/â€œ/g, '"')
+                   .replace(/â€/g, '"')
+                   .replace(/â€“/g, '-')
+                   .replace(/Â/g, '')
+                   .replace(/â€~/g, "'");
 
-        // Remove markdown formatting characters
-        text = text.replace(/#{1,6}s/g, '')
-            .replace(/***/g, '')
-            .replace(/**/g, '')
-            .replace(/*/g, '')
-            .replace(/___/g, '')
-            .replace(/__/g, '')
-            .replace(/_/g, '');
-
-        // Split into chapters by word count ~1000 words
-        const paras = text.split('
-
-').filter(p => p.trim());
+        const paras = text.split('\n\n').filter(p => p.trim());
         chapters = [];
-        let chapter = { title: 'Chapter 1', content: '', imageSrc: '', imageOpacity: 0.35 };
+        let chapter = { title: 'Chapter 1', content: '' };
         let wordCount = 0;
 
         for (const p of paras) {
-            const words = p.split(/s+/).length;
-            if (wordCount > 0 && wordCount + words > 1000) {
-                chapters.push({ ...chapter });
-                chapter = { title: `Chapter ${chapters.length + 1}`, content: p, imageSrc: '', imageOpacity: 0.35 };
-                wordCount = words;
+            const count = p.split(/\s+/).length;
+            if (wordCount + count > 1000) {
+                chapters.push({...chapter});
+                chapter = {title: `Chapter ${chapters.length + 1}`, content: p};
+                wordCount = count;
             } else {
-                chapter.content += (chapter.content ? '
-
-' : '') + p;
-                wordCount += words;
+                chapter.content += (chapter.content ? '\n\n' : '') + p;
+                wordCount += count;
             }
         }
         if (chapter.content) chapters.push(chapter);
 
         document.getElementById('upload').style.display = 'none';
-        document.getElementById('editor').classList.add('active');
+        document.getElementById('editor').style.display = 'block';
 
         renderNav();
         loadChapter(0);
     }
 
     function renderNav() {
-        nav.innerHTML = `<div class="subtitle">Chapters</div>` + chapters.map((ch, i) =>
-            `<button class="page-btn ${i === currentIdx ? 'active' : ''}" onclick="loadChapter(${i})" aria-current="${i === currentIdx ? 'true' : 'false'}">${ch.title}</button>`
+        document.getElementById('nav').innerHTML = chapters.map((ch, i) =>
+            `<button class="page-btn ${i===currentIdx?'active':''}" onclick="loadChapter(${i})">${ch.title}</button>`
         ).join('');
     }
 
-    function loadChapter(idx) {
-        currentIdx = idx;
-        titleInput.value = chapters[idx].title;
-        contentInput.value = chapters[idx].content;
-        transparencySlider.value = chapters[idx].imageOpacity ?? 0.35;
+    function loadChapter(i) {
+        currentIdx = i;
+        document.getElementById('title').value = chapters[i].title;
+        document.getElementById('content').value = chapters[i].content;
         renderNav();
         updatePreview();
-
-        // Reset image file input to allow re-upload same image if wanted
-        imageFileInput.value = '';
     }
 
     function updatePreview() {
         const ch = chapters[currentIdx];
-        const paras = ch.content.split('
-
-').map(p => `<p>${p}</p>`).join('');
-        previewContent.innerHTML = `<h2>${ch.title}</h2>` + paras;
-
-        if (ch.imageSrc) {
-            chapterImage.src = ch.imageSrc;
-            chapterImage.style.opacity = ch.imageOpacity ?? 0.35;
-            chapterImage.style.display = 'block';
-        } else {
-            chapterImage.style.opacity = 0;
-            chapterImage.style.display = 'none';
-        }
+        const formatted = ch.content.split('\n\n').map(p => `<p>${p}</p>`).join('');
+        document.getElementById('previewText').innerHTML = `<h2>${ch.title}</h2>${formatted}`;
     }
 
-    titleInput.oninput = () => {
-        chapters[currentIdx].title = titleInput.value;
+    document.getElementById('title').oninput = () => {
+        chapters[currentIdx].title = document.getElementById('title').value;
         renderNav();
         updatePreview();
     };
 
-    contentInput.oninput = () => {
-        chapters[currentIdx].content = contentInput.value;
+    document.getElementById('content').oninput = () => {
+        chapters[currentIdx].content = document.getElementById('content').value;
         updatePreview();
     };
 
-    exportBtn.addEventListener('click', () => {
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>My Ebook</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:wght@400&display=swap" rel="stylesheet">
+    function uploadBgImage(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const img = document.getElementById('bgPreview');
+        img.src = URL.createObjectURL(file);
+        img.style.display = 'block';
+    }
+
+    function changeOpacity(val) {
+        const img = document.getElementById('bgPreview');
+        img.style.opacity = val / 100;
+    }
+
+    function exportHTML() {
+        let html = `<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>Ebook</title>
+
+<link href=\"https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Lora:wght@400&display=swap\" rel=\"stylesheet\">
 <style>
-body{font-family:'Lora',serif;background:#faf8f3;color:#2d2d2d;line-height:1.9;max-width:800px;margin:0 auto;padding:60px 40px}
-.chapter{min-height:100vh;padding:80px 40px;page-break-after:always;position:relative}
-h2{font-family:'Playfair Display',serif;font-size:3rem;margin-bottom:40px;color:#b68f1e}
-p{margin-bottom:25px;line-height:1.7}
-.chapter img {
-  position: absolute;
-  max-width: 45%;
-  max-height: 80%;
-  right: 5%;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.35;
-  border-radius: 15px;
-  box-shadow: 0 10px 35px rgba(212,175,55,0.5);
-  object-fit: contain;
-}
-@media print{.chapter{page-break-after:always}}
-</style></head><body>`;
-
-        chapters.forEach(ch => {
-            const paras = ch.content.split('
-
-').map(p => `<p>${p}</p>`).join('
-');
-            let imgTag = '';
-            if (ch.imageSrc) {
-                imgTag = `<img src="${ch.imageSrc}" style="opacity:${ch.imageOpacity ?? 0.35}" alt="Chapter image">`;
-            }
-            html += `<div class="chapter"><h2>${ch.title}</h2>${imgTag}${paras}</div>`;
+body{font-family:'Lora',serif;background:#fff;color:#2d2d2d;line-height:1.9;max-width:800px;margin:0 auto;padding:60px}
+.chapter{page-break-after:always;min-height:100vh;padding:60px 0}
+h2{font-family:'Playfair Display',serif;font-size:2.6rem;margin-bottom:40px}
+p{margin-bottom:25px}
+</style></head><body>`;chapters.forEach(ch=>{
+            const paras = ch.content.split('\n\n').map(p=>`<p>${p}</p>`).join('');
+            html += `<div class='chapter'><h2>${ch.title}</h2>${paras}</div>`;
         });
+
         html += '</body></html>';
 
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
+        const blob = new Blob([html], {type:'text/html'});
         const a = document.createElement('a');
-        a.href = url;
-        a.download = 'my-ebook.html';
+        a.href = URL.createObjectURL(blob);
+        a.download = 'ebook.html';
         a.click();
-        URL.revokeObjectURL(url);
-        alert('Ebook exported! Open the HTML file in your browser.');
-    });
-
-    // Initialize with empty editor visible for demo, hide upload section
-    document.getElementById('upload').style.display = 'none';
-    document.getElementById('editor').classList.add('active');
-
-    // Trigger file upload and processing manually or you can add a file upload UI
+    }
 </script>
+
 </body>
 </html>
