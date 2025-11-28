@@ -1,633 +1,963 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Premium Ebook Creator — Cover to Cover</title>
-
-<!-- Fonts -->
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Lora:wght@400;500&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-
-<!-- Libraries -->
-<!-- mammoth for DOCX extraction -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<!-- pdf.js for PDF text extraction -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<!-- html2pdf for PDF export (html -> PDF in browser) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
-<!-- JSZip for EPUB creation -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.8.0/jszip.min.js"></script>
-
-<style>
-:root{
-  --gold:#d4af37; --bg1:#0b0b12; --panel:rgba(255,255,255,0.04);
-}
-*{box-sizing:border-box}
-body{margin:0;font-family:Montserrat,system-ui,Arial;background:linear-gradient(180deg,var(--bg1),#12121a);color:#fff;padding:28px}
-.app{max-width:1360px;margin:0 auto;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:18px;padding:22px;border:1px solid rgba(212,175,55,0.08);box-shadow:0 14px 60px rgba(0,0,0,0.6)}
-.header{display:flex;align-items:center;justify-content:space-between;gap:20px}
-.brand{display:flex;align-items:center;gap:16px}
-.logo{width:68px;height:68px;border-radius:12px;background:linear-gradient(135deg,var(--gold),#f7d58a);display:flex;align-items:center;justify-content:center;color:#000;font-weight:700;font-family:'Playfair Display',serif}
-.title{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold)}
-.controls{display:flex;gap:10px;align-items:center}
-.btn{background:var(--gold);color:#000;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-weight:700}
-.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#fff;padding:8px 12px;border-radius:8px}
-.main{display:flex;gap:18px;margin-top:22px}
-.sidebar{width:360px;padding:18px;background:var(--panel);border-radius:12px;border:1px solid rgba(255,255,255,0.03);height:calc(100vh - 150px);overflow:auto}
-.editor-wrap{flex:1;display:flex;flex-direction:column;gap:18px}
-.section-title{font-size:13px;color:var(--gold);margin-bottom:8px;font-weight:600}
-.input,textarea,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(212,175,55,0.12);background:rgba(255,255,255,0.03);color:#fff}
-textarea{min-height:140px}
-.small{font-size:13px;color:#ddd}
-.template-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:8px}
-.template-card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:10px;padding:8px;border:1px solid rgba(255,255,255,0.03);cursor:pointer;display:flex;flex-direction:column;gap:8px}
-.template-card.selected{outline:3px solid rgba(212,175,55,0.18)}
-.template-thumb{height:86px;border-radius:6px;background:#222;display:flex;align-items:center;justify-content:center;color:#999;font-size:13px}
-.chapters-list{display:flex;flex-direction:column;gap:8px}
-.chapter-item{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
-.chapter-item.active{outline:2px solid rgba(212,175,55,0.12)}
-.page-chooser{display:flex;gap:8px;align-items:center;margin-top:8px}
-.page-chooser select{max-width:160px}
-.preview-stage{display:flex;gap:18px;align-items:flex-start}
-.canvas-panel{width:460px;flex:0 0 460px}
-.page-canvas{width:420px;height:612px;background:#fff;border-radius:8px;overflow:hidden;position:relative;box-shadow:0 8px 40px rgba(0,0,0,0.6);transform-origin:top left}
-.page-inner{position:absolute;inset:36px;overflow:auto;padding:8px;background:transparent}
-.canvas-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.12;z-index:0;pointer-events:none}
-.canvas-image{position:absolute;z-index:2;cursor:move;touch-action:none;border:1px dashed rgba(0,0,0,0.1);display:flex;align-items:center;justify-content:center}
-.canvas-image .handle{position:absolute;width:12px;height:12px;background:rgba(255,255,255,0.9);border-radius:2px;border:1px solid #333;z-index:4}
-.handle-br{right:-6px;bottom:-6px;cursor:se-resize}
-.canvas-content{position:relative;z-index:3;color:#222}
-.page-canvas h1{font-family:'Playfair Display',serif;font-size:30px;margin:8px 0}
-.page-canvas h3{font-family:'Playfair Display',serif;font-size:14px;margin:6px 0;color:#444}
-.page-canvas p{font-family:'Lora',serif;font-size:14px;color:#333;line-height:1.6}
-
-/* right side controls */
-.right-controls{flex:1;display:flex;flex-direction:column;gap:10px}
-.right-controls textarea{height:420px;color:#111;background:#fff;border:1px solid #ddd}
-.controls-row{display:flex;gap:8px;align-items:center}
-.footer-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
-
-/* cover generator modal */
-.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:9999}
-.modal .card{background:#fff;color:#222;padding:18px;border-radius:10px;min-width:400px}
-.cover-preview{width:360px;height:540px;background:#111;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;flex-direction:column;padding:20px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
-.small-muted{font-size:12px;color:#bbb}
-
-/* responsive */
-@media (max-width:1200px){
-  .main{flex-direction:column}
-  .canvas-panel{width:100%;display:flex;justify-content:center}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Ebook Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Playfair+Display:wght@400;500;600&family=Montserrat:wght@300;400;500;600&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Cormorant Garamond', Georgia, serif; background: #0A0A0F; min-height: 100vh; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0D0D0D; }
+        ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 4px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
 </head>
 <body>
-<div class="app">
-  <div class="header">
-    <div class="brand"><div class="logo">E</div>
-      <div><div class="title">Premium Ebook Creator — Cover to Cover</div><div class="small-muted">From draft import to EPUB/PDF, premium templates, page artwork & cover generator</div></div>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useCallback, useRef } = React;
+
+        const PremiumEbookStudio = () => {
+            const [activeTab, setActiveTab] = useState('cover');
+            const [coverPrompt, setCoverPrompt] = useState('');
+            const [generatedCover, setGeneratedCover] = useState(null);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [isExporting, setIsExporting] = useState(false);
+            const [uploadedDoc, setUploadedDoc] = useState(null);
+            const [documentContent, setDocumentContent] = useState('');
+            const [selectedTemplate, setSelectedTemplate] = useState('luxury');
+            const [ebookTitle, setEbookTitle] = useState('');
+            const [ebookAuthor, setEbookAuthor] = useState('');
+            const [chapters, setChapters] = useState([]);
+            const [coverStyle, setCoverStyle] = useState('cinematic');
+            const [generatedImages, setGeneratedImages] = useState([]);
+            const [previewMode, setPreviewMode] = useState('fullbook');
+            const [notification, setNotification] = useState(null);
+            const [uploadedCoverImage, setUploadedCoverImage] = useState(null);
+            const [imageOpacity, setImageOpacity] = useState(100);
+            const [overlayOpacity, setOverlayOpacity] = useState(50);
+            const [imageSource, setImageSource] = useState('none');
+            
+            const fileInputRef = useRef(null);
+            const imageInputRef = useRef(null);
+
+            // DISTINCT TEMPLATES with different styling
+            const templates = [
+                { 
+                    id: 'luxury', 
+                    name: 'Luxury Gold', 
+                    desc: 'Elegant gold accents, serif fonts',
+                    preview: { bg: '#1a1a2e', accent: '#D4AF37', text: '#FFFFFF', font: 'Playfair Display' },
+                    coverBg: 'linear-gradient(145deg, #1a1a2e 0%, #0d0d1a 100%)',
+                    pageBg: '#FAF8F5',
+                    pageText: '#2A2A2A',
+                    accentColor: '#D4AF37'
+                },
+                { 
+                    id: 'modern', 
+                    name: 'Modern Minimal', 
+                    desc: 'Clean sans-serif, white space',
+                    preview: { bg: '#FFFFFF', accent: '#000000', text: '#333333', font: 'Montserrat' },
+                    coverBg: 'linear-gradient(145deg, #FFFFFF 0%, #F0F0F0 100%)',
+                    pageBg: '#FFFFFF',
+                    pageText: '#333333',
+                    accentColor: '#000000'
+                },
+                { 
+                    id: 'creative', 
+                    name: 'Creative Coral', 
+                    desc: 'Bold coral accents, playful',
+                    preview: { bg: '#2D2D3A', accent: '#FF6B6B', text: '#FFFFFF', font: 'Montserrat' },
+                    coverBg: 'linear-gradient(145deg, #2D2D3A 0%, #1a1a24 100%)',
+                    pageBg: '#FFF9F9',
+                    pageText: '#2D2D3A',
+                    accentColor: '#FF6B6B'
+                },
+                { 
+                    id: 'professional', 
+                    name: 'Professional Navy', 
+                    desc: 'Corporate, authoritative',
+                    preview: { bg: '#1B2838', accent: '#4A90D9', text: '#FFFFFF', font: 'Georgia' },
+                    coverBg: 'linear-gradient(145deg, #1B2838 0%, #0F1824 100%)',
+                    pageBg: '#F8FAFC',
+                    pageText: '#1B2838',
+                    accentColor: '#4A90D9'
+                },
+                { 
+                    id: 'romantic', 
+                    name: 'Romantic Blush', 
+                    desc: 'Soft pinks, delicate feel',
+                    preview: { bg: '#FDF2F4', accent: '#C77D8E', text: '#5C4A4D', font: 'Lora' },
+                    coverBg: 'linear-gradient(145deg, #5C4A4D 0%, #3D3133 100%)',
+                    pageBg: '#FDF8F9',
+                    pageText: '#5C4A4D',
+                    accentColor: '#C77D8E'
+                },
+                { 
+                    id: 'thriller', 
+                    name: 'Thriller Dark', 
+                    desc: 'High contrast, dramatic',
+                    preview: { bg: '#0D0D0D', accent: '#C41E3A', text: '#FFFFFF', font: 'Georgia' },
+                    coverBg: 'linear-gradient(145deg, #0D0D0D 0%, #000000 100%)',
+                    pageBg: '#F5F5F5',
+                    pageText: '#1A1A1A',
+                    accentColor: '#C41E3A'
+                },
+            ];
+
+            const coverStyles = [
+                { id: 'cinematic', name: 'Cinematic', icon: '🎬' },
+                { id: 'photorealistic', name: 'Photo', icon: '📷' },
+                { id: 'artistic', name: 'Artistic', icon: '🎨' },
+                { id: 'minimalist', name: 'Minimal', icon: '◻️' },
+                { id: 'vintage', name: 'Vintage', icon: '📜' },
+                { id: 'fantasy', name: 'Fantasy', icon: '✨' },
+            ];
+
+            const sampleContent = `Chapter 1: The Beginning
+
+The morning light filtered through the ancient windows, casting long shadows across the weathered floorboards. She stood there, breath held, knowing that the next few moments would change everything.
+
+Years of searching had led to this single moment. A lifetime of questions waiting to be answered. The room fell silent as she turned the page, her heart racing with anticipation.
+
+"I never thought this day would come," she whispered to the empty room. But the room wasn't empty — it was full of memories, of possibilities that stretched out before her like an endless horizon.
+
+Chapter 2: The Journey
+
+The road stretched endlessly before her, winding through valleys and over mountains that seemed to touch the sky. Each step brought her closer to the truth she had been seeking.
+
+The villagers she met along the way spoke of legends and prophecies. They shared their bread and their stories, and she carried both with her as she continued on.
+
+By the time she reached the ancient forest, the seasons had changed twice. This was where her journey would either end or truly begin.`;
+
+            const getCurrentTemplate = () => templates.find(t => t.id === selectedTemplate) || templates[0];
+
+            const showNotification = (message, type = 'success') => {
+                setNotification({ message, type });
+                setTimeout(() => setNotification(null), 4000);
+            };
+
+            const getCurrentCoverImage = () => {
+                if (imageSource === 'upload' && uploadedCoverImage) return uploadedCoverImage.url;
+                if (imageSource === 'ai' && generatedCover) return generatedCover.url;
+                return null;
+            };
+
+            const handleFileUpload = useCallback((e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    setUploadedDoc({ name: file.name, size: (file.size / 1024).toFixed(2) + ' KB' });
+                    setDocumentContent(content);
+                    
+                    const lines = content.split('\n');
+                    const detectedChapters = [];
+                    let currentChapter = null;
+                    let wordCount = 0;
+                    
+                    lines.forEach((line) => {
+                        if (line.match(/^(Chapter|CHAPTER|Part|PART)\s*(\d+|[IVXLC]+)/i) || line.match(/^#{1,2}\s+/)) {
+                            if (currentChapter) {
+                                currentChapter.wordCount = wordCount;
+                                detectedChapters.push(currentChapter);
+                            }
+                            currentChapter = { id: detectedChapters.length + 1, title: line.replace(/^#+\s*/, '').trim() || `Chapter ${detectedChapters.length + 1}` };
+                            wordCount = 0;
+                        } else {
+                            wordCount += line.split(/\s+/).filter(w => w.length > 0).length;
+                        }
+                    });
+                    if (currentChapter) { currentChapter.wordCount = wordCount; detectedChapters.push(currentChapter); }
+                    if (detectedChapters.length === 0) {
+                        detectedChapters.push({ id: 1, title: 'Full Document', wordCount: content.split(/\s+/).filter(w => w.length > 0).length });
+                    }
+                    setChapters(detectedChapters);
+                    showNotification(`✓ Uploaded: ${detectedChapters.length} section(s)`);
+                };
+                reader.readAsText(file);
+            }, []);
+
+            const handleImageUpload = useCallback((e) => {
+                const file = e.target.files[0];
+                if (!file || !file.type.startsWith('image/')) {
+                    showNotification('Please upload an image file', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    setUploadedCoverImage({ url: event.target.result, name: file.name });
+                    setImageSource('upload');
+                    showNotification(`✓ Image uploaded`);
+                };
+                reader.readAsDataURL(file);
+            }, []);
+
+            const generateCover = async () => {
+                if (!coverPrompt.trim()) { showNotification('Enter a description', 'error'); return; }
+                setIsGenerating(true);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const seed = coverPrompt.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                const result = { url: `https://picsum.photos/seed/${seed}/600/900`, prompt: coverPrompt, timestamp: Date.now() };
+                setGeneratedCover(result);
+                setGeneratedImages(prev => [...prev, result]);
+                setImageSource('ai');
+                setIsGenerating(false);
+                showNotification('✓ Cover generated!');
+            };
+
+            // ========== FIXED PDF EXPORT ==========
+            const exportPDF = async () => {
+                setIsExporting(true);
+                showNotification('Creating PDF...');
+                
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+                    const template = getCurrentTemplate();
+                    const title = ebookTitle || 'Untitled Book';
+                    const author = ebookAuthor || 'Unknown Author';
+                    const content = documentContent || sampleContent;
+                    
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    const margin = 15;
+                    const contentWidth = pageWidth - (margin * 2);
+
+                    // Helper to convert hex to RGB
+                    const hexToRgb = (hex) => {
+                        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                        return result ? {
+                            r: parseInt(result[1], 16),
+                            g: parseInt(result[2], 16),
+                            b: parseInt(result[3], 16)
+                        } : { r: 0, g: 0, b: 0 };
+                    };
+
+                    const accentRgb = hexToRgb(template.accentColor);
+                    const textRgb = hexToRgb(template.pageText);
+
+                    // === COVER PAGE ===
+                    pdf.setFillColor(26, 26, 46);
+                    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+                    
+                    // Gold accent bar
+                    pdf.setFillColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                    pdf.rect(0, 0, pageWidth, 4, 'F');
+                    
+                    // Title
+                    pdf.setTextColor(255, 255, 255);
+                    pdf.setFontSize(24);
+                    pdf.setFont('helvetica', 'bold');
+                    const titleLines = pdf.splitTextToSize(title, contentWidth);
+                    pdf.text(titleLines, pageWidth / 2, pageHeight * 0.4, { align: 'center' });
+                    
+                    // Decorative line
+                    pdf.setDrawColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                    pdf.setLineWidth(0.5);
+                    pdf.line(pageWidth * 0.25, pageHeight * 0.52, pageWidth * 0.75, pageHeight * 0.52);
+                    
+                    // Author
+                    pdf.setFontSize(14);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text(author, pageWidth / 2, pageHeight * 0.6, { align: 'center' });
+                    
+                    // Template name
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(150, 150, 150);
+                    pdf.text(template.name + ' Edition', pageWidth / 2, pageHeight * 0.9, { align: 'center' });
+
+                    // === TITLE PAGE ===
+                    pdf.addPage();
+                    pdf.setFillColor(250, 248, 245);
+                    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+                    
+                    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+                    pdf.setFontSize(20);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.text(title, pageWidth / 2, pageHeight * 0.4, { align: 'center' });
+                    
+                    pdf.setFontSize(12);
+                    pdf.setFont('helvetica', 'italic');
+                    pdf.text('by', pageWidth / 2, pageHeight * 0.47, { align: 'center' });
+                    
+                    pdf.setFontSize(14);
+                    pdf.setFont('helvetica', 'normal');
+                    pdf.text(author, pageWidth / 2, pageHeight * 0.53, { align: 'center' });
+
+                    // === CONTENT PAGES ===
+                    const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+                    let currentY = margin + 15;
+                    let pageNum = 1;
+                    
+                    pdf.addPage();
+                    pdf.setFillColor(250, 248, 245);
+                    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+                    paragraphs.forEach((para) => {
+                        const trimmed = para.trim();
+                        const isChapter = trimmed.match(/^(Chapter|CHAPTER|Part|PART)\s/i);
+                        
+                        if (isChapter) {
+                            // Start new page for chapter if not at top
+                            if (currentY > margin + 30) {
+                                // Page number
+                                pdf.setFontSize(9);
+                                pdf.setTextColor(150, 150, 150);
+                                pdf.text(String(pageNum), pageWidth / 2, pageHeight - 10, { align: 'center' });
+                                pageNum++;
+                                
+                                pdf.addPage();
+                                pdf.setFillColor(250, 248, 245);
+                                pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+                                currentY = margin + 15;
+                            }
+                            
+                            // Chapter heading with accent color
+                            pdf.setFontSize(16);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor(accentRgb.r, accentRgb.g, accentRgb.b);
+                            pdf.text(trimmed, pageWidth / 2, currentY, { align: 'center' });
+                            currentY += 15;
+                            
+                        } else {
+                            // Regular paragraph
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+                            
+                            const lines = pdf.splitTextToSize(trimmed, contentWidth);
+                            
+                            for (let i = 0; i < lines.length; i++) {
+                                if (currentY > pageHeight - margin - 15) {
+                                    // Page number
+                                    pdf.setFontSize(9);
+                                    pdf.setTextColor(150, 150, 150);
+                                    pdf.text(String(pageNum), pageWidth / 2, pageHeight - 10, { align: 'center' });
+                                    pageNum++;
+                                    
+                                    pdf.addPage();
+                                    pdf.setFillColor(250, 248, 245);
+                                    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+                                    currentY = margin + 10;
+                                    
+                                    pdf.setFontSize(11);
+                                    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+                                }
+                                
+                                pdf.text(lines[i], margin, currentY);
+                                currentY += 5.5;
+                            }
+                            currentY += 3;
+                        }
+                    });
+
+                    // Final page number
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(150, 150, 150);
+                    pdf.text(String(pageNum), pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+                    // Save
+                    const filename = title.replace(/[^a-z0-9]/gi, '_') + '.pdf';
+                    pdf.save(filename);
+                    showNotification('✓ PDF Downloaded!');
+                    
+                } catch (error) {
+                    console.error('PDF Error:', error);
+                    showNotification('PDF Error: ' + error.message, 'error');
+                } finally {
+                    setIsExporting(false);
+                }
+            };
+
+            // ========== FIXED EPUB EXPORT (as HTML download) ==========
+            const exportEPUB = async () => {
+                setIsExporting(true);
+                showNotification('Creating eBook HTML...');
+                
+                try {
+                    const template = getCurrentTemplate();
+                    const title = ebookTitle || 'Untitled Book';
+                    const author = ebookAuthor || 'Unknown Author';
+                    const content = documentContent || sampleContent;
+                    
+                    // Convert content to HTML
+                    const paragraphs = content.split(/\n\n+/).filter(p => p.trim());
+                    let htmlContent = '';
+                    
+                    paragraphs.forEach((para, idx) => {
+                        const trimmed = para.trim();
+                        if (trimmed.match(/^(Chapter|CHAPTER|Part|PART)\s/i)) {
+                            htmlContent += `<h2 style="color: ${template.accentColor}; text-align: center; margin: 2em 0 1em; font-size: 1.5em;">${trimmed}</h2>\n`;
+                        } else {
+                            const isFirst = idx === 0 || paragraphs[idx - 1]?.match(/^(Chapter|CHAPTER|Part|PART)\s/i);
+                            if (isFirst) {
+                                const first = trimmed.charAt(0);
+                                const rest = trimmed.slice(1);
+                                htmlContent += `<p style="text-align: justify; text-indent: 0; margin: 0.8em 0;"><span style="float: left; font-size: 3em; line-height: 0.8; padding-right: 0.1em; color: ${template.accentColor};">${first}</span>${rest}</p>\n`;
+                            } else {
+                                htmlContent += `<p style="text-align: justify; text-indent: 1.5em; margin: 0.8em 0;">${trimmed}</p>\n`;
+                            }
+                        }
+                    });
+
+                    const fullHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 16px;
+            line-height: 1.7;
+            color: ${template.pageText};
+            background: ${template.pageBg};
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+        .cover {
+            text-align: center;
+            padding: 80px 20px;
+            background: linear-gradient(145deg, #1a1a2e 0%, #0d0d1a 100%);
+            color: white;
+            margin: -40px -30px 40px;
+            border-top: 5px solid ${template.accentColor};
+        }
+        .cover h1 {
+            font-size: 2.2em;
+            margin-bottom: 20px;
+            font-weight: normal;
+        }
+        .cover .divider {
+            width: 100px;
+            height: 2px;
+            background: ${template.accentColor};
+            margin: 20px auto;
+        }
+        .cover .author {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        .cover .template {
+            font-size: 0.8em;
+            opacity: 0.6;
+            margin-top: 40px;
+        }
+        .title-page {
+            text-align: center;
+            padding: 60px 20px;
+            page-break-after: always;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 40px;
+        }
+        .title-page h1 {
+            font-size: 2em;
+            color: ${template.pageText};
+            margin-bottom: 20px;
+        }
+        .title-page .author {
+            font-size: 1.3em;
+            color: #666;
+        }
+        .content { margin-top: 30px; }
+        @media print {
+            body { padding: 0; max-width: none; }
+            .cover { page-break-after: always; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cover">
+        <h1>${title}</h1>
+        <div class="divider"></div>
+        <p class="author">${author}</p>
+        <p class="template">${template.name} Edition</p>
     </div>
-
-    <div class="controls">
-      <button class="secondary" id="importBtn">Import (DOCX / PDF / TXT)</button>
-      <button class="btn" id="exportPdfBtn">Export PDF</button>
-      <button class="btn" id="exportEpubBtn">Export EPUB</button>
-      <button class="secondary" id="openCoverBtn">Cover Generator</button>
+    
+    <div class="title-page">
+        <h1>${title}</h1>
+        <p style="margin: 10px 0;">by</p>
+        <p class="author">${author}</p>
     </div>
-  </div>
-
-  <div class="main" style="margin-top:18px">
-    <aside class="sidebar">
-      <div>
-        <div class="section-title">Premium Templates (10)</div>
-        <div class="template-grid" id="templates"></div>
-
-        <div class="section-title" style="margin-top:12px">Chapters</div>
-        <div class="chapters-list" id="chaptersList"></div>
-        <div style="margin-top:10px;display:flex;gap:8px">
-          <button class="btn" id="addChapter">+ Add Chapter</button>
-          <button class="secondary" id="removeChapter">Remove</button>
-        </div>
-
-        <div style="margin-top:18px">
-          <div class="section-title">Page Artwork</div>
-          <div class="small-muted">Choose chapter to attach image:</div>
-          <div class="page-chooser">
-            <select id="pageSelect"></select>
-            <input type="file" id="imageUpload" accept="image/*">
-          </div>
-          <div style="margin-top:10px">
-            <label class="small-muted">Image opacity</label>
-            <input type="range" id="imageOpacity" min="0" max="1" step="0.01" value="0.15">
-          </div>
-        </div>
-
-        <div style="margin-top:18px">
-          <div class="section-title">Typography & Layout</div>
-          <select id="fontSelect" class="input">
-            <option value="lora">Lora (Serif)</option>
-            <option value="playfair">Playfair Display (Elegant)</option>
-            <option value="mont">Montserrat (Modern)</option>
-          </select>
-
-          <div style="margin-top:8px">
-            <label class="small-muted">Page size preview</label>
-            <select id="pageSize" class="input">
-              <option value="portrait">Portrait 6" x 9"</option>
-              <option value="a4">A4</option>
-              <option value="square">Square 8"x8"</option>
-            </select>
-          </div>
-
-          <div style="margin-top:12px">
-            <label class="small-muted">Apply template to all chapters</label>
-            <div style="margin-top:8px"><button class="secondary" id="applyTemplateAll">Apply to All</button></div>
-          </div>
-
-        </div>
-
-        <div style="margin-top:18px">
-          <div class="section-title">Project</div>
-          <div class="small-muted">Save / load locally</div>
-          <div style="margin-top:8px;display:flex;gap:8px">
-            <button class="btn" id="saveProject">Save</button>
-            <button class="secondary" id="loadProject">Load</button>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <section class="editor-wrap">
-      <div class="editor-top" style="display:flex;gap:12px;align-items:flex-start">
-        <div style="flex:1">
-          <input id="chapterTitle" class="input" placeholder="Chapter title">
-          <input id="chapterSubtitle" class="input" placeholder="Subtitle (optional)" style="margin-top:8px">
-        </div>
-
-        <div style="width:260px;display:flex;flex-direction:column;gap:8px">
-          <div class="small-muted">Preview scale</div>
-          <input type="range" id="scale" min="0.6" max="1.4" step="0.05" value="1">
-          <div class="small-muted">Layout style</div>
-          <select id="layoutStyle" class="input">
-            <option value="classic">Classic (title + body)</option>
-            <option value="magazine">Magazine (image header)</option>
-            <option value="minimal">Minimal (large margins)</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="preview-stage">
-        <div class="canvas-panel">
-          <div class="page-canvas" id="pageCanvas">
-            <div class="canvas-bg" id="canvasBg"></div>
-            <!-- dynamic page images (draggable) will be placed here -->
-            <div class="page-inner" id="pageInner">
-              <div class="canvas-content" id="canvasContent">
-                <h1 id="cTitle">Chapter Title</h1>
-                <h3 id="cSubtitle">Subtitle</h3>
-                <div id="cBody"><p>Start writing or import a draft to populate chapters. Select any chapter from the left. The canvas shows the actual ebook page ratio (portrait) — edit in WYSIWYG.</p></div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="right-controls">
-          <textarea id="editorArea" placeholder="Edit chapter content here..."></textarea>
-          <div style="display:flex;gap:8px">
-            <button class="btn" id="saveBtn">Save to Chapter</button>
-            <button class="secondary" id="refreshPreview">Refresh Preview</button>
-            <button class="secondary" id="duplicateChapter">Duplicate</button>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-            <button class="secondary" id="undoBtn">Undo</button>
-            <button class="btn" id="saveAll">Save Project Locally</button>
-          </div>
-        </div>
-      </div>
-
-    </section>
-  </div>
-</div>
-
-<!-- Cover modal -->
-<div class="modal" id="coverModal">
-  <div class="card">
-    <h3>Cover Generator</h3>
-    <div style="display:flex;gap:12px">
-      <div style="flex:1">
-        <input id="coverTitle" class="input" placeholder="Book title"/>
-        <input id="coverAuthor" class="input" placeholder="Author" style="margin-top:8px"/>
-        <select id="coverStyle" class="input" style="margin-top:8px">
-          <option value="gold">Gold Minimal</option>
-          <option value="dark">Dark Texture</option>
-          <option value="pastel">Pastel Art</option>
-        </select>
-        <div style="margin-top:8px;display:flex;gap:8px">
-          <button class="btn" id="generateCoverBtn">Generate</button>
-          <button class="secondary" id="downloadCoverBtn">Download PNG</button>
-        </div>
-      </div>
-      <div>
-        <div class="cover-preview" id="coverPreview">
-          <div id="coverPreviewInner" style="text-align:center">
-            <div style="font-family:'Playfair Display', serif;font-size:24px;margin-bottom:8px" id="cvTitle">Title</div>
-            <div style="font-size:14px" id="cvAuthor">Author</div>
-          </div>
-        </div>
-      </div>
+    
+    <div class="content">
+        ${htmlContent}
     </div>
-  </div>
-</div>
+    
+    <div style="text-align: center; margin-top: 60px; padding-top: 30px; border-top: 1px solid #ddd; color: #999; font-size: 0.9em;">
+        ❧ The End ❧
+    </div>
+</body>
+</html>`;
 
-<script>
-/* -------------------------
-   Data model & templates
-   ------------------------- */
-let project = { meta:{title:'My Ebook'}, chapters:[], template:0 };
-const TEMPLATES = [
-  {name:'Classic Gold',settings:{bgOpacity:0.12,font:'playfair',palette:'gold'}},
-  {name:'Modern Minimal',settings:{bgOpacity:0.06,font:'mont',palette:'mono'}},
-  {name:'Magazine Spread',settings:{bgOpacity:0.2,font:'playfair',palette:'warm'}},
-  {name:'Dark Noir',settings:{bgOpacity:0.08,font:'mont',palette:'dark'}},
-  {name:'Soft Pastel',settings:{bgOpacity:0.14,font:'lora',palette:'pastel'}},
-  {name:'Leather Bound',settings:{bgOpacity:0.12,font:'playfair',palette:'leather'}},
-  {name:'Editorial Pro',settings:{bgOpacity:0.18,font:'mont',palette:'editorial'}},
-  {name:'Luxury Monogram',settings:{bgOpacity:0.10,font:'playfair',palette:'monogram'}},
-  {name:'Art House',settings:{bgOpacity:0.16,font:'lora',palette:'art'}},
-  {name:'Clean Paperback',settings:{bgOpacity:0.06,font:'mont',palette:'paper'}},
-];
+                    // Download as HTML file
+                    const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = title.replace(/[^a-z0-9]/gi, '_') + '_ebook.html';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    showNotification('✓ eBook HTML Downloaded!');
+                    
+                } catch (error) {
+                    console.error('Export Error:', error);
+                    showNotification('Export Error: ' + error.message, 'error');
+                } finally {
+                    setIsExporting(false);
+                }
+            };
 
-/* -------------------------
-   Helpers
-   ------------------------- */
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => Array.from(document.querySelectorAll(s));
-function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+            const downloadCoverImage = () => {
+                const coverImage = getCurrentCoverImage();
+                if (!coverImage) { showNotification('No cover image', 'error'); return; }
+                
+                const link = document.createElement('a');
+                link.href = coverImage;
+                link.download = (ebookTitle || 'cover').replace(/[^a-z0-9]/gi, '_') + '_cover.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showNotification('✓ Cover downloaded!');
+            };
 
-/* -------------------------
-   Init UI
-   ------------------------- */
-function init(){
-  // render templates
-  const tpl = $('#templates');
-  TEMPLATES.forEach((t,i)=>{
-    const node = document.createElement('div'); node.className='template-card';
-    node.innerHTML = `<div class="template-thumb">${t.name}</div><div style="font-size:13px">${t.name}</div>`;
-    node.onclick = ()=>selectTemplate(i,node);
-    tpl.appendChild(node);
-  });
+            const exportTXT = () => {
+                const content = documentContent || sampleContent;
+                const title = ebookTitle || 'Untitled Book';
+                const author = ebookAuthor || 'Unknown Author';
+                const fullText = `${title}\nby ${author}\n\n${'═'.repeat(40)}\n\n${content}`;
+                
+                const blob = new Blob([fullText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = title.replace(/[^a-z0-9]/gi, '_') + '.txt';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                showNotification('✓ TXT downloaded!');
+            };
 
-  // add first chapter
-  if(!project.chapters.length) addChapter('Introduction');
-  renderChapters();
-  populatePageSelect();
-  bindEvents();
+            const TabButton = ({ id, label, icon }) => (
+                <button onClick={() => setActiveTab(id)} style={{
+                    padding: '12px 16px', border: 'none',
+                    background: activeTab === id ? 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)' : 'transparent',
+                    color: activeTab === id ? '#0D0D0D' : '#707070', fontSize: '11px', fontWeight: '600',
+                    letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer',
+                    fontFamily: 'inherit', borderRadius: '4px', transition: 'all 0.3s',
+                }}>
+                    <span style={{ marginRight: '5px' }}>{icon}</span>{label}
+                </button>
+            );
 
-  // load saved project if exists
-  const saved = localStorage.getItem('ebook_project');
-  if(saved){
-    try{ project = JSON.parse(saved); renderChapters(); populatePageSelect(); loadChapter(0); } catch(e){}
-  }
-}
-init();
+            const BookCover = ({ size = 'large' }) => {
+                const coverImage = getCurrentCoverImage();
+                const template = getCurrentTemplate();
+                const isLarge = size === 'large';
+                const w = isLarge ? 240 : 150;
+                const h = isLarge ? 360 : 225;
+                
+                return (
+                    <div style={{
+                        width: w, height: h, borderRadius: '4px', position: 'relative', overflow: 'hidden', flexShrink: 0,
+                        background: template.coverBg,
+                        boxShadow: '12px 12px 40px rgba(0,0,0,0.5)',
+                    }}>
+                        {coverImage && (
+                            <img src={coverImage} alt="Cover" style={{
+                                position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: imageOpacity / 100,
+                            }} />
+                        )}
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: template.accentColor, zIndex: 10 }} />
+                        <div style={{
+                            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 5, padding: isLarge ? '20px 15px' : '12px 10px',
+                            background: coverImage ? `linear-gradient(180deg, rgba(0,0,0,${overlayOpacity/100}) 0%, transparent 40%, transparent 60%, rgba(0,0,0,${overlayOpacity/100 + 0.2}) 100%)` : 'transparent',
+                            display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                        }}>
+                            {(coverImage || ebookTitle) ? (
+                                <>
+                                    <div style={{ textAlign: 'center', marginTop: isLarge ? '25px' : '12px' }}>
+                                        <div style={{ fontSize: isLarge ? '9px' : '7px', letterSpacing: '2px', color: template.accentColor, marginBottom: '8px', textTransform: 'uppercase', textShadow: '0 1px 5px rgba(0,0,0,0.8)' }}>{template.name}</div>
+                                        <h3 style={{ fontSize: isLarge ? '18px' : '13px', fontWeight: '400', color: '#FFFFFF', lineHeight: '1.3', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.9)', fontFamily: template.preview.font }}>{ebookTitle || 'Your Title'}</h3>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ width: '30px', height: '1px', background: template.accentColor, margin: '0 auto 8px' }} />
+                                        <p style={{ fontSize: isLarge ? '11px' : '8px', letterSpacing: '1px', color: '#E0E0E0', margin: 0, textTransform: 'uppercase', textShadow: '0 1px 5px rgba(0,0,0,0.8)' }}>{ebookAuthor || 'Author'}</p>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#505060' }}>
+                                    <div style={{ fontSize: isLarge ? '36px' : '24px', marginBottom: '10px', opacity: 0.5, animation: 'float 3s ease-in-out infinite' }}>📚</div>
+                                    <p style={{ fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', textAlign: 'center' }}>Add image</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
 
-/* -------------------------
-   Template handling
-   ------------------------- */
-function selectTemplate(i,node){
-  project.template = i;
-  $$('.template-card').forEach((c,idx)=>c.classList.toggle('selected', idx===i));
-  applyTemplate(TEMPLATES[i].settings);
-}
-function applyTemplate(settings){
-  if(settings.font==='playfair'){ $('#cTitle').style.fontFamily="'Playfair Display', serif"; $('#canvasContent').style.fontFamily="'Lora', serif"; }
-  else if(settings.font==='mont'){ $('#cTitle').style.fontFamily="Montserrat, sans-serif"; $('#canvasContent').style.fontFamily="Montserrat, sans-serif"; }
-  else { $('#cTitle').style.fontFamily="'Playfair Display', serif"; $('#canvasContent').style.fontFamily="'Lora', serif"; }
-  if(settings.bgOpacity!==undefined) $('#canvasBg').style.opacity = settings.bgOpacity;
-}
-$('#applyTemplateAll')?.addEventListener('click',()=> {
-  const t = TEMPLATES[project.template].settings;
-  project.chapters.forEach(c=>{ c.template = project.template; c.imageOpacity = t.bgOpacity || 0.15; });
-  renderChapters(); loadChapter(currentChapterIndex);
-});
+            const template = getCurrentTemplate();
 
-/* -------------------------
-   Chapters management
-   ------------------------- */
-function addChapter(title){
-  const ch = { title: title||`Chapter ${project.chapters.length+1}`, subtitle:'', content:'', image:'', imageOpacity:0.15, layout:'classic', template:project.template, imagePosition:{x:40,y:80,w:200,h:120} };
-  project.chapters.push(ch);
-  renderChapters(); populatePageSelect();
-}
-$('#addChapter').onclick = ()=>{ addChapter('New Chapter'); };
+            return (
+                <div style={{ minHeight: '100vh', background: 'linear-gradient(180deg, #0A0A0F 0%, #151520 50%, #0D0D12 100%)', fontFamily: "'Cormorant Garamond', Georgia, serif", color: '#E8E8E8' }}>
+                    
+                    {notification && (
+                        <div style={{
+                            position: 'fixed', top: '15px', right: '15px', left: '15px', maxWidth: '350px', marginLeft: 'auto',
+                            padding: '14px 18px', zIndex: 1000, animation: 'fadeIn 0.3s ease', borderRadius: '6px',
+                            background: notification.type === 'error' ? '#8B0000' : 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)',
+                            color: notification.type === 'error' ? '#FFF' : '#0D0D0D', fontWeight: '600', fontSize: '13px',
+                            boxShadow: '0 8px 25px rgba(0,0,0,0.4)',
+                        }}>{notification.message}</div>
+                    )}
 
-function renderChapters(){
-  const list = $('#chaptersList'); list.innerHTML='';
-  project.chapters.forEach((ch,i)=>{
-    const node = document.createElement('div'); node.className='chapter-item'+(i===currentChapterIndex?' active':'');
-    node.innerHTML = `<div style="flex:1"><strong>${escapeHtml(ch.title)}</strong><div class="small-muted">${(ch.content||'—').slice(0,80)}</div></div><div style="display:flex;gap:6px"><button class="secondary" onclick="editChapter(${i})">Edit</button></div>`;
-    node.onclick = ()=>selectChapter(i,node);
-    list.appendChild(node);
-  });
-}
-$('#removeChapter').onclick = ()=>{ if(project.chapters.length<=1){ alert('At least one chapter required'); return;} project.chapters.splice(currentChapterIndex,1); renderChapters(); populatePageSelect(); loadChapter(0); };
+                    {isExporting && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+                            <div style={{ background: 'rgba(20, 20, 28, 0.95)', padding: '30px 45px', borderRadius: '8px', textAlign: 'center', border: '1px solid rgba(212, 175, 55, 0.3)' }}>
+                                <div style={{ width: '40px', height: '40px', border: '3px solid rgba(212, 175, 55, 0.3)', borderTop: '3px solid #D4AF37', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 15px' }} />
+                                <p style={{ color: '#D4AF37', fontSize: '13px', letterSpacing: '2px' }}>CREATING FILE...</p>
+                            </div>
+                        </div>
+                    )}
 
-/* -------------------------
-   Page chooser + image upload
-   ------------------------- */
-function populatePageSelect(){
-  const sel = $('#pageSelect'); sel.innerHTML='';
-  project.chapters.forEach((ch,i)=>{ const opt = document.createElement('option'); opt.value=i; opt.text=`${i+1} — ${ch.title}`; sel.appendChild(opt); });
-}
-$('#imageUpload').onchange = (ev)=>{
-  const file = ev.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    const idx = parseInt($('#pageSelect').value||0);
-    project.chapters[idx].image = e.target.result;
-    project.chapters[idx].imageOpacity = parseFloat($('#imageOpacity').value || 0.15);
-    // default position/size
-    project.chapters[idx].imagePosition = project.chapters[idx].imagePosition || {x:40,y:80,w:200,h:140};
-    if(idx===currentChapterIndex) renderCanvasImages();
-  };
-  reader.readAsDataURL(file);
-};
-$('#imageOpacity').oninput = (ev)=>{
-  const val = parseFloat(ev.target.value);
-  const idx = parseInt($('#pageSelect').value||0);
-  if(project.chapters[idx]) project.chapters[idx].imageOpacity = val;
-  if(idx===currentChapterIndex) renderCanvasImages();
-};
+                    <header style={{ padding: '18px 15px', borderBottom: '1px solid rgba(212, 175, 55, 0.15)', background: 'rgba(10, 10, 15, 0.95)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: '1200px', margin: '0 auto', flexWrap: 'wrap', gap: '10px' }}>
+                            <div>
+                                <h1 style={{ fontSize: 'clamp(15px, 4vw, 20px)', fontWeight: '300', letterSpacing: '3px', textTransform: 'uppercase', background: 'linear-gradient(135deg, #D4AF37 0%, #F4E5B2 50%, #D4AF37 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>Premium Ebook Studio</h1>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <button onClick={exportPDF} disabled={isExporting} style={{ padding: '10px 14px', background: 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)', border: 'none', borderRadius: '4px', color: '#0D0D0D', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit', fontWeight: '600' }}>📄 PDF</button>
+                                <button onClick={exportEPUB} disabled={isExporting} style={{ padding: '10px 14px', background: 'transparent', border: '1px solid rgba(212, 175, 55, 0.5)', borderRadius: '4px', color: '#D4AF37', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit' }}>📚 HTML</button>
+                            </div>
+                        </div>
+                    </header>
 
-/* -------------------------
-   Editor / Canvas
-   ------------------------- */
-let currentChapterIndex = 0;
-function selectChapter(i,node){ $$('.chapter-item').forEach((n,idx)=>n.classList.toggle('active', idx===i)); loadChapter(i); }
-function editChapter(i){ currentChapterIndex = i; loadChapter(i); }
-function loadChapter(i){
-  currentChapterIndex = i;
-  const ch = project.chapters[i];
-  $('#chapterTitle').value = ch.title;
-  $('#chapterSubtitle').value = ch.subtitle||'';
-  $('#editorArea').value = ch.content||'';
-  $('#cTitle').innerText = ch.title;
-  $('#cSubtitle').innerText = ch.subtitle||'';
-  $('#cBody').innerHTML = (ch.content||'<p></p>').replace(/\n\n/g,'</p><p>');
-  if(ch.image){ $('#canvasBg').style.backgroundImage='none'; } // base bg not used per-chapter (we use movable image)
-  renderCanvasImages();
-  $('#pageSelect').value = i;
-}
-$('#saveBtn').onclick = ()=>{ saveChapter(); };
-$('#refreshPreview').onclick = ()=>{ loadChapter(currentChapterIndex); };
-$('#duplicateChapter').onclick = ()=>{ const c = JSON.parse(JSON.stringify(project.chapters[currentChapterIndex])); project.chapters.splice(currentChapterIndex+1,0,c); renderChapters(); populatePageSelect(); };
-$('#saveAll').onclick = ()=>{ localStorage.setItem('ebook_project', JSON.stringify(project)); alert('Saved locally.'); };
+                    <nav style={{ display: 'flex', justifyContent: 'center', gap: '3px', padding: '12px 8px', background: 'rgba(15, 15, 20, 0.6)', borderBottom: '1px solid rgba(212, 175, 55, 0.1)', flexWrap: 'wrap' }}>
+                        <TabButton id="cover" label="Cover" icon="📖" />
+                        <TabButton id="upload" label="Text" icon="📤" />
+                        <TabButton id="template" label="Style" icon="✨" />
+                        <TabButton id="preview" label="Preview" icon="👁" />
+                        <TabButton id="export" label="Export" icon="💾" />
+                    </nav>
 
-function saveChapter(){
-  const ch = project.chapters[currentChapterIndex];
-  ch.title = $('#chapterTitle').value;
-  ch.subtitle = $('#chapterSubtitle').value;
-  ch.content = $('#editorArea').value;
-  ch.imageOpacity = parseFloat($('#imageOpacity').value || ch.imageOpacity || 0.15);
-  renderChapters(); loadChapter(currentChapterIndex);
-}
+                    <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px 12px' }}>
+                        
+                        {/* COVER TAB */}
+                        {activeTab === 'cover' && (
+                            <div style={{ animation: 'fadeIn 0.4s ease', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                                <div>
+                                    {/* Upload Image */}
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '2px solid rgba(212, 175, 55, 0.4)', borderRadius: '8px', padding: '18px', marginBottom: '15px' }}>
+                                        <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '12px' }}>📷 Upload Image</h2>
+                                        <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+                                        <div onClick={() => imageInputRef.current?.click()} style={{ border: '2px dashed rgba(212, 175, 55, 0.4)', borderRadius: '6px', padding: '18px 12px', textAlign: 'center', cursor: 'pointer' }}>
+                                            <div style={{ fontSize: '26px', marginBottom: '5px' }}>🖼️</div>
+                                            <p style={{ color: '#D4AF37', fontSize: '11px' }}>Click to upload</p>
+                                            <p style={{ color: '#404040', fontSize: '9px' }}>JPG, PNG, GIF, WebP</p>
+                                        </div>
+                                        {uploadedCoverImage && (
+                                            <div style={{ marginTop: '10px', padding: '8px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <span style={{ color: '#D4AF37', fontSize: '11px' }}>✓ {uploadedCoverImage.name?.substring(0, 20)}</span>
+                                                <button onClick={() => setImageSource('upload')} style={{ padding: '4px 10px', background: imageSource === 'upload' ? '#D4AF37' : 'transparent', border: '1px solid #D4AF37', borderRadius: '3px', color: imageSource === 'upload' ? '#000' : '#D4AF37', fontSize: '8px', cursor: 'pointer' }}>{imageSource === 'upload' ? '✓' : 'Use'}</button>
+                                            </div>
+                                        )}
+                                    </div>
 
-/* -------------------------
-   Canvas images: draggable + resizable
-   ------------------------- */
-function renderCanvasImages(){
-  // remove existing canvas-image nodes
-  $$('#pageCanvas .canvas-image').forEach(n=>n.remove());
-  const ch = project.chapters[currentChapterIndex];
-  if(!ch) return;
-  if(ch.image){
-    const imgNode = document.createElement('div');
-    imgNode.className = 'canvas-image';
-    imgNode.style.left = (ch.imagePosition?.x || 40) + 'px';
-    imgNode.style.top = (ch.imagePosition?.y || 80) + 'px';
-    imgNode.style.width = (ch.imagePosition?.w || 200) + 'px';
-    imgNode.style.height = (ch.imagePosition?.h || 140) + 'px';
-    imgNode.style.backgroundImage = `url(${ch.image})`;
-    imgNode.style.backgroundSize = 'cover';
-    imgNode.style.backgroundPosition = 'center';
-    imgNode.dataset.idx = currentChapterIndex;
+                                    {/* AI Generate */}
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px', marginBottom: '15px' }}>
+                                        <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '12px' }}>🎬 AI Generate</h2>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '5px', marginBottom: '10px' }}>
+                                            {coverStyles.map(s => (
+                                                <button key={s.id} onClick={() => setCoverStyle(s.id)} style={{ padding: '8px 4px', background: coverStyle === s.id ? 'rgba(212, 175, 55, 0.2)' : 'rgba(30, 30, 40, 0.5)', border: coverStyle === s.id ? '1px solid #D4AF37' : '1px solid rgba(50, 50, 70, 0.3)', borderRadius: '4px', color: coverStyle === s.id ? '#D4AF37' : '#606060', fontSize: '9px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                                                    <div style={{ fontSize: '14px' }}>{s.icon}</div>{s.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea value={coverPrompt} onChange={(e) => setCoverPrompt(e.target.value)} placeholder="Describe your cover..." rows={2} style={{ width: '100%', padding: '10px', background: 'rgba(20, 20, 30, 0.8)', border: '1px solid rgba(60, 60, 80, 0.3)', borderRadius: '4px', color: '#E8E8E8', fontSize: '12px', fontFamily: 'inherit', outline: 'none', resize: 'none', boxSizing: 'border-box', marginBottom: '10px' }} />
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
+                                            {['Sunset mountains', 'Ocean waves', 'City lights'].map(p => (
+                                                <button key={p} onClick={() => setCoverPrompt(p)} style={{ padding: '4px 8px', background: 'rgba(30, 30, 40, 0.6)', border: '1px solid rgba(50, 50, 70, 0.3)', borderRadius: '10px', color: '#505050', fontSize: '8px', cursor: 'pointer', fontFamily: 'inherit' }}>{p}</button>
+                                            ))}
+                                        </div>
+                                        <button onClick={generateCover} disabled={isGenerating || !coverPrompt.trim()} style={{ width: '100%', padding: '11px', background: isGenerating ? '#444' : 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)', border: 'none', borderRadius: '4px', color: '#0D0D0D', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', cursor: isGenerating ? 'wait' : 'pointer', fontFamily: 'inherit', fontWeight: '600', opacity: !coverPrompt.trim() ? 0.5 : 1 }}>{isGenerating ? '⏳ Generating...' : '✦ Generate'}</button>
+                                        {generatedImages.length > 0 && (
+                                            <div style={{ marginTop: '10px', display: 'flex', gap: '5px', overflowX: 'auto' }}>
+                                                {generatedImages.slice(-4).map((img, i) => (
+                                                    <div key={i} onClick={() => { setGeneratedCover(img); setImageSource('ai'); }} style={{ width: '38px', height: '55px', background: `url(${img.url}) center/cover`, borderRadius: '3px', cursor: 'pointer', border: generatedCover?.timestamp === img.timestamp && imageSource === 'ai' ? '2px solid #D4AF37' : '2px solid transparent', flexShrink: 0 }} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
 
-    // resize handle
-    const handle = document.createElement('div'); handle.className='handle handle-br';
-    imgNode.appendChild(handle);
+                                    {/* Controls */}
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px' }}>
+                                        <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '12px' }}>🎚️ Controls</h2>
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{ fontSize: '10px', color: '#707070' }}>Image Opacity</span><span style={{ fontSize: '10px', color: '#D4AF37' }}>{imageOpacity}%</span></div>
+                                            <input type="range" min="0" max="100" value={imageOpacity} onChange={(e) => setImageOpacity(Number(e.target.value))} style={{ width: '100%', accentColor: '#D4AF37' }} />
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}><span style={{ fontSize: '10px', color: '#707070' }}>Text Overlay</span><span style={{ fontSize: '10px', color: '#D4AF37' }}>{overlayOpacity}%</span></div>
+                                            <input type="range" min="0" max="100" value={overlayOpacity} onChange={(e) => setOverlayOpacity(Number(e.target.value))} style={{ width: '100%', accentColor: '#D4AF37' }} />
+                                        </div>
+                                    </div>
+                                </div>
 
-    // add to canvas
-    document.getElementById('pageCanvas').appendChild(imgNode);
+                                <div>
+                                    {/* Book Details */}
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px', marginBottom: '15px' }}>
+                                        <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '12px' }}>📝 Details</h2>
+                                        <div style={{ marginBottom: '10px' }}>
+                                            <label style={{ display: 'block', fontSize: '9px', color: '#505050', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Title</label>
+                                            <input type="text" value={ebookTitle} onChange={(e) => setEbookTitle(e.target.value)} placeholder="Book title..." style={{ width: '100%', padding: '10px', background: 'rgba(20, 20, 30, 0.8)', border: '1px solid rgba(60, 60, 80, 0.3)', borderRadius: '4px', color: '#E8E8E8', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '9px', color: '#505050', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>Author</label>
+                                            <input type="text" value={ebookAuthor} onChange={(e) => setEbookAuthor(e.target.value)} placeholder="Your name..." style={{ width: '100%', padding: '10px', background: 'rgba(20, 20, 30, 0.8)', border: '1px solid rgba(60, 60, 80, 0.3)', borderRadius: '4px', color: '#E8E8E8', fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }} />
+                                        </div>
+                                    </div>
 
-    // add listeners for drag
-    makeDraggableAndResizable(imgNode, handle, (rect)=>{
-      // update model when user stops dragging/resizing
-      const parentRect = document.getElementById('pageCanvas').getBoundingClientRect();
-      project.chapters[currentChapterIndex].imagePosition = { x: Math.round(rect.left - parentRect.left), y: Math.round(rect.top - parentRect.top), w: Math.round(rect.width), h: Math.round(rect.height) };
-    });
+                                    {/* Preview */}
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '15px', alignSelf: 'flex-start' }}>👁️ Preview</h2>
+                                        <BookCover size="large" />
+                                        <div style={{ marginTop: '12px', padding: '5px 12px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '10px', fontSize: '9px', color: '#D4AF37' }}>
+                                            {imageSource === 'upload' ? '📷 Uploaded' : imageSource === 'ai' ? '🎬 AI' : '📚 None'}
+                                        </div>
+                                        {getCurrentCoverImage() && (
+                                            <button onClick={downloadCoverImage} style={{ marginTop: '10px', padding: '7px 14px', background: 'transparent', border: '1px solid rgba(212, 175, 55, 0.4)', borderRadius: '4px', color: '#D4AF37', fontSize: '9px', cursor: 'pointer', fontFamily: 'inherit' }}>⬇ Download</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-    // set opacity
-    imgNode.style.opacity = ch.imageOpacity || 0.15;
-  }
-}
+                        {/* UPLOAD TAB */}
+                        {activeTab === 'upload' && (
+                            <div style={{ animation: 'fadeIn 0.4s ease', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                                <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px' }}>
+                                    <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '15px' }}>📤 Upload Manuscript</h2>
+                                    <input ref={fileInputRef} type="file" accept=".txt,.md" onChange={handleFileUpload} style={{ display: 'none' }} />
+                                    <div onClick={() => fileInputRef.current?.click()} style={{ border: '2px dashed rgba(212, 175, 55, 0.4)', borderRadius: '6px', padding: '30px 15px', textAlign: 'center', cursor: 'pointer' }}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📄</div>
+                                        <p style={{ color: '#D4AF37', fontSize: '12px', marginBottom: '4px' }}>Click to upload</p>
+                                        <p style={{ color: '#404040', fontSize: '10px' }}>TXT or Markdown</p>
+                                    </div>
+                                    {uploadedDoc && (
+                                        <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '4px' }}>
+                                            <p style={{ color: '#D4AF37', fontSize: '12px' }}>✓ {uploadedDoc.name}</p>
+                                            <p style={{ color: '#505050', fontSize: '10px' }}>{uploadedDoc.size}</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', padding: '18px' }}>
+                                    <h2 style={{ fontSize: '14px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '15px' }}>📑 Structure</h2>
+                                    {chapters.length > 0 ? (
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', padding: '8px', background: 'rgba(212, 175, 55, 0.1)', borderRadius: '4px' }}>
+                                                <span style={{ color: '#D4AF37', fontSize: '11px' }}>{chapters.length} sections</span>
+                                                <span style={{ color: '#505050', fontSize: '11px' }}>{chapters.reduce((a, c) => a + (c.wordCount || 0), 0).toLocaleString()} words</span>
+                                            </div>
+                                            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                                                {chapters.map(ch => (
+                                                    <div key={ch.id} style={{ padding: '8px', background: 'rgba(25, 25, 35, 0.6)', borderRadius: '4px', marginBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                                                        <span style={{ color: '#B0B0B0', fontSize: '11px' }}>{ch.title}</span>
+                                                        <span style={{ color: '#404040', fontSize: '9px' }}>{(ch.wordCount || 0).toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ textAlign: 'center', padding: '30px', color: '#353540' }}>
+                                            <div style={{ fontSize: '28px', marginBottom: '8px', opacity: 0.5 }}>📑</div>
+                                            <p style={{ fontSize: '11px' }}>Upload to see structure</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
-/* Draggable & resizable (vanilla) */
-function makeDraggableAndResizable(node, handle, onChange){
-  let dragging=false, resizing=false;
-  let start = {x:0,y:0,w:0,h:0,left:0,top:0};
-  node.addEventListener('pointerdown', (e)=>{
-    if(e.target === handle){ resizing=true; }
-    else { dragging=true; }
-    start.x = e.clientX; start.y = e.clientY;
-    const r = node.getBoundingClientRect();
-    start.left = r.left; start.top = r.top; start.w = r.width; start.h = r.height;
-    node.setPointerCapture(e.pointerId);
-    e.preventDefault();
-  });
-  document.addEventListener('pointermove', (e)=>{
-    if(!dragging && !resizing) return;
-    if(dragging){
-      const nx = start.left + (e.clientX - start.x);
-      const ny = start.top + (e.clientY - start.y);
-      node.style.left = (nx - document.getElementById('pageCanvas').getBoundingClientRect().left) + 'px';
-      node.style.top = (ny - document.getElementById('pageCanvas').getBoundingClientRect().top) + 'px';
-    } else if(resizing){
-      const nw = Math.max(40, start.w + (e.clientX - start.x));
-      const nh = Math.max(30, start.h + (e.clientY - start.y));
-      node.style.width = nw + 'px';
-      node.style.height = nh + 'px';
-    }
-  });
-  document.addEventListener('pointerup', (e)=>{
-    if(dragging || resizing){
-      const r = node.getBoundingClientRect();
-      onChange && onChange(r);
-    }
-    dragging=false; resizing=false;
-  });
-}
+                        {/* TEMPLATES TAB - NOW WITH DISTINCT PREVIEWS */}
+                        {activeTab === 'template' && (
+                            <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                                <h2 style={{ fontSize: '15px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '20px', textAlign: 'center' }}>Select Style Template</h2>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px' }}>
+                                    {templates.map(t => (
+                                        <div key={t.id} onClick={() => { setSelectedTemplate(t.id); showNotification(`✓ ${t.name} selected`); }} style={{
+                                            background: selectedTemplate === t.id ? 'rgba(212, 175, 55, 0.15)' : 'rgba(20, 20, 28, 0.9)',
+                                            border: selectedTemplate === t.id ? '2px solid #D4AF37' : '1px solid rgba(50, 50, 70, 0.2)',
+                                            borderRadius: '8px', padding: '15px', cursor: 'pointer', position: 'relative',
+                                        }}>
+                                            {selectedTemplate === t.id && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '18px', height: '18px', background: '#D4AF37', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontSize: '10px', fontWeight: 'bold' }}>✓</div>}
+                                            
+                                            {/* DISTINCT VISUAL PREVIEW */}
+                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                                                {/* Mini cover preview */}
+                                                <div style={{ width: '45px', height: '65px', background: t.coverBg, borderRadius: '3px', position: 'relative', overflow: 'hidden', boxShadow: '3px 3px 10px rgba(0,0,0,0.3)' }}>
+                                                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: t.accentColor }} />
+                                                    <div style={{ position: 'absolute', bottom: '8px', left: '4px', right: '4px', height: '2px', background: t.accentColor, opacity: 0.5 }} />
+                                                </div>
+                                                {/* Mini page preview */}
+                                                <div style={{ width: '45px', height: '65px', background: t.pageBg, borderRadius: '3px', padding: '6px 4px', boxShadow: '2px 2px 8px rgba(0,0,0,0.2)' }}>
+                                                    <div style={{ width: '100%', height: '3px', background: t.accentColor, marginBottom: '4px', borderRadius: '1px' }} />
+                                                    <div style={{ width: '100%', height: '2px', background: t.pageText, opacity: 0.3, marginBottom: '2px' }} />
+                                                    <div style={{ width: '80%', height: '2px', background: t.pageText, opacity: 0.3, marginBottom: '2px' }} />
+                                                    <div style={{ width: '90%', height: '2px', background: t.pageText, opacity: 0.3, marginBottom: '2px' }} />
+                                                    <div style={{ width: '70%', height: '2px', background: t.pageText, opacity: 0.3 }} />
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Color swatches */}
+                                            <div style={{ display: 'flex', gap: '4px', marginBottom: '10px' }}>
+                                                <div style={{ width: '18px', height: '18px', background: t.preview.bg, borderRadius: '3px', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                                <div style={{ width: '18px', height: '18px', background: t.accentColor, borderRadius: '3px' }} />
+                                                <div style={{ width: '18px', height: '18px', background: t.pageBg, borderRadius: '3px', border: '1px solid rgba(0,0,0,0.1)' }} />
+                                            </div>
+                                            
+                                            <h3 style={{ fontSize: '13px', color: '#D0D0D0', marginBottom: '3px' }}>{t.name}</h3>
+                                            <p style={{ fontSize: '10px', color: '#505050' }}>{t.desc}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                                
+                                {/* Current template preview */}
+                                <div style={{ marginTop: '25px', padding: '20px', background: 'rgba(20, 20, 28, 0.9)', borderRadius: '8px', border: '1px solid rgba(212, 175, 55, 0.2)' }}>
+                                    <h3 style={{ fontSize: '12px', color: '#D4AF37', marginBottom: '15px', letterSpacing: '1px', textTransform: 'uppercase' }}>Current: {template.name}</h3>
+                                    <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                        <BookCover size="small" />
+                                        <div style={{ width: '150px', height: '225px', background: template.pageBg, borderRadius: '4px', padding: '15px 12px', boxShadow: '8px 8px 25px rgba(0,0,0,0.3)', fontFamily: 'Georgia, serif' }}>
+                                            <div style={{ fontSize: '10px', color: template.accentColor, fontWeight: 'bold', marginBottom: '8px' }}>Chapter 1</div>
+                                            <p style={{ fontSize: '8px', color: template.pageText, lineHeight: '1.5' }}>
+                                                <span style={{ float: 'left', fontSize: '18px', color: template.accentColor, paddingRight: '2px', lineHeight: '0.8' }}>T</span>
+                                                he morning light filtered through the windows...
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-/* -------------------------
-   Scale & layout
-   ------------------------- */
-$('#scale').oninput = (ev)=>{ const s = ev.target.value; $('#pageCanvas').style.transform = `scale(${s})`; $('#pageCanvas').style.transformOrigin='top left'; };
-$('#layoutStyle').onchange = (ev)=>{ const v=ev.target.value; if(v==='magazine'){ $('#cTitle').style.fontSize='32px'; $('#cBody').style.columnCount=2; } else { $('#cTitle').style.fontSize='30px'; $('#cBody').style.columnCount=1; } };
-$('#fontSelect').onchange = (ev)=>{ const v=ev.target.value; if(v==='playfair'){ $('#cTitle').style.fontFamily="'Playfair Display', serif"; $('#canvasContent').style.fontFamily="'Lora', serif"; }
-  else if(v==='mont'){ $('#cTitle').style.fontFamily='Montserrat, sans-serif'; $('#canvasContent').style.fontFamily='Montserrat, sans-serif'; }
-  else { $('#cTitle').style.fontFamily="'Playfair Display', serif"; $('#canvasContent').style.fontFamily="'Lora', serif"; } };
+                        {/* PREVIEW TAB */}
+                        {activeTab === 'preview' && (
+                            <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', gap: '4px', background: 'rgba(20, 20, 28, 0.8)', padding: '5px', borderRadius: '6px' }}>
+                                        {['cover', 'interior', 'fullbook'].map(m => (
+                                            <button key={m} onClick={() => setPreviewMode(m)} style={{ padding: '8px 16px', background: previewMode === m ? '#D4AF37' : 'transparent', border: 'none', borderRadius: '4px', color: previewMode === m ? '#000' : '#606060', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', fontFamily: 'inherit', fontWeight: previewMode === m ? '600' : '400' }}>{m === 'fullbook' ? 'Full' : m}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                {previewMode === 'cover' && <div style={{ display: 'flex', justifyContent: 'center' }}><BookCover size="large" /></div>}
+                                
+                                {previewMode === 'interior' && (
+                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                        <div style={{ width: '100%', maxWidth: '500px', background: template.pageBg, borderRadius: '4px', padding: '30px 35px', boxShadow: '15px 15px 45px rgba(0,0,0,0.4)', fontFamily: 'Georgia, serif' }}>
+                                            <p style={{ fontSize: '8px', color: '#888', textAlign: 'center', marginBottom: '18px' }}>12</p>
+                                            <p style={{ fontSize: '12px', color: template.pageText, lineHeight: '1.8', textAlign: 'justify' }}>
+                                                <span style={{ float: 'left', fontSize: '40px', lineHeight: '0.8', paddingRight: '6px', color: template.accentColor }}>T</span>
+                                                he morning light filtered through the ancient windows, casting long shadows across the weathered floorboards. She stood there, breath held, knowing that the next few moments would change everything.
+                                            </p>
+                                            <p style={{ fontSize: '12px', color: template.pageText, lineHeight: '1.8', textAlign: 'justify', marginTop: '14px' }}>
+                                                Years of searching had led to this single moment. A lifetime of questions waiting to be answered.
+                                            </p>
+                                            <div style={{ textAlign: 'center', marginTop: '25px', color: template.accentColor, fontSize: '14px' }}>❧</div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {previewMode === 'fullbook' && (
+                                    <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                                        <div style={{ textAlign: 'center' }}><p style={{ color: '#505050', fontSize: '9px', marginBottom: '8px', textTransform: 'uppercase' }}>Cover</p><BookCover size="small" /></div>
+                                        <div style={{ textAlign: 'center' }}>
+                                            <p style={{ color: '#505050', fontSize: '9px', marginBottom: '8px', textTransform: 'uppercase' }}>Interior</p>
+                                            <div style={{ display: 'flex', boxShadow: '10px 10px 30px rgba(0,0,0,0.4)', borderRadius: '3px', overflow: 'hidden' }}>
+                                                <div style={{ width: '130px', height: '180px', background: template.pageBg, padding: '15px 10px', borderRight: `1px solid ${template.pageText}22`, fontFamily: 'Georgia, serif' }}>
+                                                    <p style={{ fontSize: '6px', color: '#888', textAlign: 'center', marginBottom: '8px' }}>12</p>
+                                                    <p style={{ fontSize: '8px', color: template.pageText, lineHeight: '1.5' }}>
+                                                        <span style={{ float: 'left', fontSize: '16px', color: template.accentColor, paddingRight: '2px', lineHeight: '0.8' }}>T</span>
+                                                        he morning light filtered through...
+                                                    </p>
+                                                </div>
+                                                <div style={{ width: '130px', height: '180px', background: template.pageBg, padding: '15px 10px', fontFamily: 'Georgia, serif' }}>
+                                                    <p style={{ fontSize: '8px', color: template.pageText, lineHeight: '1.5' }}>Years of searching had led to this moment.</p>
+                                                    <div style={{ textAlign: 'center', marginTop: '15px', color: template.accentColor, fontSize: '8px' }}>❧</div>
+                                                    <p style={{ fontSize: '6px', color: '#888', textAlign: 'center', marginTop: '30px' }}>13</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
-/* -------------------------
-   Import (TXT, DOCX, PDF)
-   ------------------------- */
-(function wireImport(){
-  const fi = document.createElement('input'); fi.type='file'; fi.accept='.txt,.docx,.pdf'; fi.style.display='none'; document.body.appendChild(fi);
-  $('#importBtn').onclick = ()=>fi.click();
-  fi.onchange = async (ev)=>{ const file = ev.target.files[0]; if(!file) return; await importFile(file); fi.value=''; };
-})();
+                        {/* EXPORT TAB */}
+                        {activeTab === 'export' && (
+                            <div style={{ animation: 'fadeIn 0.4s ease' }}>
+                                <h2 style={{ fontSize: '15px', letterSpacing: '2px', textTransform: 'uppercase', color: '#D4AF37', marginBottom: '20px', textAlign: 'center' }}>💾 Export Your Ebook</h2>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', maxWidth: '800px', margin: '0 auto' }}>
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📄</div>
+                                        <h3 style={{ color: '#D4AF37', fontSize: '13px', marginBottom: '4px' }}>PDF</h3>
+                                        <p style={{ color: '#505050', fontSize: '10px', marginBottom: '12px' }}>Print-ready with cover & formatting</p>
+                                        <button onClick={exportPDF} disabled={isExporting} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)', border: 'none', borderRadius: '4px', color: '#000', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', fontWeight: '600' }}>⬇ Download PDF</button>
+                                    </div>
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📚</div>
+                                        <h3 style={{ color: '#D4AF37', fontSize: '13px', marginBottom: '4px' }}>HTML eBook</h3>
+                                        <p style={{ color: '#505050', fontSize: '10px', marginBottom: '12px' }}>Styled HTML for browsers & conversion</p>
+                                        <button onClick={exportEPUB} disabled={isExporting} style={{ width: '100%', padding: '10px', background: 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)', border: 'none', borderRadius: '4px', color: '#000', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer', fontWeight: '600' }}>⬇ Download HTML</button>
+                                    </div>
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>🖼️</div>
+                                        <h3 style={{ color: '#D4AF37', fontSize: '13px', marginBottom: '4px' }}>Cover Image</h3>
+                                        <p style={{ color: '#505050', fontSize: '10px', marginBottom: '12px' }}>Download your cover</p>
+                                        <button onClick={downloadCoverImage} disabled={!getCurrentCoverImage()} style={{ width: '100%', padding: '10px', background: getCurrentCoverImage() ? 'linear-gradient(135deg, #D4AF37 0%, #AA8C2C 100%)' : '#333', border: 'none', borderRadius: '4px', color: getCurrentCoverImage() ? '#000' : '#555', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: getCurrentCoverImage() ? 'pointer' : 'not-allowed', fontWeight: '600' }}>{getCurrentCoverImage() ? '⬇ Download' : 'No Cover'}</button>
+                                    </div>
+                                    <div style={{ background: 'rgba(20, 20, 28, 0.9)', border: '1px solid rgba(212, 175, 55, 0.3)', borderRadius: '8px', padding: '18px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📝</div>
+                                        <h3 style={{ color: '#D4AF37', fontSize: '13px', marginBottom: '4px' }}>Plain Text</h3>
+                                        <p style={{ color: '#505050', fontSize: '10px', marginBottom: '12px' }}>Simple text backup</p>
+                                        <button onClick={exportTXT} style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid #D4AF37', borderRadius: '4px', color: '#D4AF37', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', cursor: 'pointer' }}>⬇ Download TXT</button>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(212, 175, 55, 0.05)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: '8px', maxWidth: '600px', margin: '20px auto 0' }}>
+                                    <p style={{ color: '#707070', fontSize: '11px', lineHeight: '1.6' }}>💡 <strong>Tip:</strong> Fill in Title & Author in Cover tab for proper metadata. Files download to your Downloads folder.</p>
+                                </div>
+                            </div>
+                        )}
+                    </main>
 
-async function importFile(file){
-  const ext = file.name.split('.').pop().toLowerCase();
-  if(ext==='txt'){ const text = await file.text(); parseImportedText(text); }
-  else if(ext==='docx'){ try{ const buf = await file.arrayBuffer(); const res = await mammoth.extractRawText({arrayBuffer:buf}); parseImportedText(res.value); } catch(e){ alert('DOCX import failed.'); } }
-  else if(ext==='pdf'){ try{ const buf = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({data:buf}).promise; let full=''; for(let p=1;p<=pdf.numPages;p++){ const page = await pdf.getPage(p); const content = await page.getTextContent(); full += content.items.map(it=>it.str).join(' ') + '\\n\\n'; } parseImportedText(full); } catch(e){ alert('PDF import failed.'); } }
-  else alert('Unsupported import. Use TXT/DOCX/PDF.');
-}
+                    <footer style={{ padding: '18px', borderTop: '1px solid rgba(212, 175, 55, 0.1)', textAlign: 'center', marginTop: '20px' }}>
+                        <p style={{ fontSize: '9px', letterSpacing: '2px', color: '#252530', textTransform: 'uppercase' }}>Premium Ebook Studio</p>
+                    </footer>
+                </div>
+            );
+        };
 
-function parseImportedText(text){
-  // split into chunks separated by double newline into chapters
-  const parts = text.split(/\\n\\s*\\n/).filter(p=>p.trim());
-  if(parts.length===0){ alert('No text found in file.'); return; }
-  project.chapters = parts.map((p,i)=>({ title:`Chapter ${i+1}`, subtitle:'', content:p.trim(), image:'', imageOpacity:0.15, layout:'classic', template:project.template, imagePosition:{x:40,y:80,w:200,h:140} }));
-  renderChapters(); populatePageSelect(); loadChapter(0);
-}
-
-/* -------------------------
-   Export PDF (html2pdf)
-   ------------------------- */
-$('#exportPdfBtn').onclick = async ()=>{
-  // prepare a printable DOM
-  const wrapper = document.createElement('div');
-  wrapper.style.background = '#fff'; wrapper.style.color = '#222'; wrapper.style.padding='30px'; wrapper.style.fontFamily='Georgia,serif';
-  project.chapters.forEach((ch,i)=>{
-    const chapterDiv = document.createElement('div');
-    chapterDiv.style.pageBreakAfter = 'always';
-    if(ch.image){
-      const imgDiv = document.createElement('div'); imgDiv.style.height='200px'; imgDiv.style.backgroundImage=`url(${ch.image})`; imgDiv.style.backgroundSize='cover'; imgDiv.style.backgroundPosition='center'; imgDiv.style.opacity = ch.imageOpacity; imgDiv.style.borderRadius='6px'; imgDiv.style.marginBottom='18px';
-      chapterDiv.appendChild(imgDiv);
-    }
-    const h = document.createElement('h1'); h.innerText = ch.title; h.style.fontFamily="'Playfair Display', serif"; h.style.fontSize='28px';
-    chapterDiv.appendChild(h);
-    if(ch.subtitle){ const hs = document.createElement('h3'); hs.innerText = ch.subtitle; hs.style.fontSize='16px'; chapterDiv.appendChild(hs); }
-    const body = document.createElement('div'); body.innerHTML = escapeHtml(ch.content).replace(/\\n\\n/g,'</p><p>');
-    chapterDiv.appendChild(body);
-    wrapper.appendChild(chapterDiv);
-  });
-
-  // use html2pdf
-  const opt = { margin:0.6, filename: (project.meta.title||'ebook')+'.pdf', image:{type:'jpeg',quality:0.92}, html2canvas:{scale:2}, jsPDF:{unit:'in',format:'a4',orientation:'portrait'} };
-  document.body.appendChild(wrapper); // append (hidden)
-  await html2pdf().set(opt).from(wrapper).save().finally(()=>{ wrapper.remove(); });
-};
-
-/* -------------------------
-   Export EPUB (simple)
-   ------------------------- */
-$('#exportEpubBtn').onclick = async ()=>{
-  // Build a minimal EPUB structure using JSZip
-  const zip = new JSZip();
-  // mimetype (must be uncompressed and first)
-  zip.file('mimetype','application/epub+zip',{compression:'STORE'});
-
-  // META-INF/container.xml
-  zip.folder('META-INF').file('container.xml',`<?xml version="1.0"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">\n  <rootfiles>\n    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>\n  </rootfiles>\n</container>`);
-
-  // OEBPS content (chapters as XHTML)
-  const oebps = zip.folder('OEBPS');
-  // images folder
-  const imgFolder = oebps.folder('images');
-
-  // write xhtml files and collect manifest/spine
-  let manifestItems = [], spineItems = [];
-  for(let i=0;i<project.chapters.length;i++){
-    const ch = project.chapters[i];
-    const filename = `chapter${i+1}.xhtml`;
-    // if image exists and is data URL, add to images
-    let imgName = '';
-    if(ch.image && ch.image.startsWith('data:')){
-      imgName = `img${i+1}.png`;
-      // extract base64
-      const base = ch.image.split(',')[1];
-      imgFolder.file(imgName, base, {base64:true});
-      manifestItems.push(`<item id="img${i+1}" href="images/${imgName}" media-type="image/png"/>`);
-    }
-    const bodyHtml = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${escapeHtml(ch.title)}</title></head><body>${ imgName?(`<div><img src="images/${imgName}" style="max-width:100%"/></div>`):'' }<h1>${escapeHtml(ch.title)}</h1>${ ch.subtitle?(`<h2>${escapeHtml(ch.subtitle)}</h2>`):'' }<div>${ escapeHtml(ch.content).replace(/\\n\\n/g,'</p><p>') }</div></body></html>`;
-    oebps.file(filename, bodyHtml);
-    manifestItems.push(`<item id="chap${i+1}" href="${filename}" media-type="application/xhtml+xml"/>`);
-    spineItems.push(`<itemref idref="chap${i+1}"/>`);
-  }
-
-  // basic content.opf
-  const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>\n<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid" version="2.0">\n  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n    <dc:title>${escapeHtml(project.meta.title||'My Ebook')}</dc:title>\n    <dc:language>en</dc:language>\n    <dc:identifier id="bookid">urn:uuid:${Date.now()}</dc:identifier>\n  </metadata>\n  <manifest>\n    ${manifestItems.join('\\n    ')}\n  </manifest>\n  <spine toc=\"ncx\">\n    ${spineItems.join('\\n    ')}\n  </spine>\n</package>`;
-  oebps.file('content.opf', contentOpf);
-
-  // toc.ncx minimal
-  const navPoints = project.chapters.map((ch,i)=>`<navPoint id="navPoint-${i+1}" playOrder="${i+1}"><navLabel><text>${escapeHtml(ch.title)}</text></navLabel><content src="chapter${i+1}.xhtml"/></navPoint>`).join('\n    ');
-  const toc = `<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE ncx PUBLIC "-//NISO//DTD ncx 2005-1//EN"\n  "http://www.daisy.org/z3986/2005/ncx-2005-1.dtd">\n<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">\n  <head>\n    <meta name="dtb:uid" content="urn:uuid:${Date.now()}"/>\n  </head>\n  <docTitle><text>${escapeHtml(project.meta.title||'My Ebook')}</text></docTitle>\n  <navMap>\n    ${navPoints}\n  </navMap>\n</ncx>`;
-  oebps.file('toc.ncx', toc);
-
-  // generate zip and download as .epub
-  const content = await zip.generateAsync({type:'blob'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = (project.meta.title||'ebook') + '.epub'; a.click();
-};
-
-/* -------------------------
-   Cover generator
-   ------------------------- */
-$('#openCoverBtn').onclick = ()=>{ $('#coverModal').style.display='flex'; };
-$('#coverModal').onclick = (e)=>{ if(e.target===$('#coverModal')) $('#coverModal').style.display='none'; };
-$('#generateCoverBtn').onclick = ()=>generateCover();
-$('#downloadCoverBtn').onclick = ()=>downloadCover();
-
-function generateCover(){
-  const title = $('#coverTitle').value || 'Title';
-  const author = $('#coverAuthor').value || 'Author';
-  const style = $('#coverStyle').value;
-  $('#cvTitle').innerText = title; $('#cvAuthor').innerText = author;
-  // simple styling by style
-  const preview = $('#coverPreview');
-  if(style==='gold'){ preview.style.background = 'linear-gradient(180deg,#111, #2b2b2b)'; preview.style.color='#f7f0d6'; preview.style.fontFamily="'Playfair Display', serif"; }
-  else if(style==='dark'){ preview.style.background = 'linear-gradient(180deg,#222,#000)'; preview.style.color='#fff'; preview.style.fontFamily="'Montserrat', sans-serif"; }
-  else { preview.style.background = 'linear-gradient(180deg,#f9d6e0,#dfe7ff)'; preview.style.color='#112'; preview.style.fontFamily="'Lora', serif"; }
-}
-function downloadCover(){
-  // render the coverPreview node to canvas using html2canvas-like technique
-  // simple approach: create SVG with foreignObject snapshot
-  const node = $('#coverPreview');
-  const width = 1200, height = 1800; // higher resolution
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${ new XMLSerializer().serializeToString(node) }</foreignObject></svg>`;
-  const blob = new Blob([svg], {type:'image/svg+xml;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const img = new Image();
-  img.onload = ()=>{
-    const c = document.createElement('canvas'); c.width = width; c.height = height;
-    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,width,height);
-    ctx.drawImage(img,0,0);
-    c.toBlob((b)=>{ const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='cover.png'; a.click(); }, 'image/png');
-  };
-  img.src = url;
-}
-
-/* -------------------------
-   Export helpers & misc
-   ------------------------- */
-
-// refresh preview when switching pageSelect
-$('#pageSelect').onchange = (ev)=>{ const idx = parseInt(ev.target.value||0); loadChapter(idx); };
-
-// initial load
-renderChapters();
-populatePageSelect();
-loadChapter(0);
-
-</script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PremiumEbookStudio />);
+    </script>
 </body>
 </html>
